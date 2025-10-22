@@ -81,6 +81,28 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 		});
 	};
 
+	const validateImageDimensions = (file: File): Promise<boolean> => {
+		return new Promise((resolve) => {
+			const img = new window.Image();
+			img.onload = () => {
+				const MIN_WIDTH = 200;
+				const MIN_HEIGHT = 200;
+				
+				if (img.width < MIN_WIDTH || img.height < MIN_HEIGHT) {
+					toast.error(`Image too small. Minimum dimensions: ${MIN_WIDTH}x${MIN_HEIGHT}px`);
+					resolve(false);
+				} else {
+					resolve(true);
+				}
+			};
+			img.onerror = () => {
+				toast.error("Failed to load image");
+				resolve(false);
+			};
+			img.src = URL.createObjectURL(file);
+		});
+	};
+
 	const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (file) {
@@ -89,8 +111,18 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 				return;
 			}
 
-			if (file.size > 10 * 1024 * 1024) {
-				toast.error("Image too large. Please select an image under 10MB");
+			// GIF size limit: 5MB, other images: 10MB
+			const maxSize = file.type === "image/gif" ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
+			const sizeLabel = file.type === "image/gif" ? "5MB" : "10MB";
+			
+			if (file.size > maxSize) {
+				toast.error(`Image too large. Please select ${file.type === "image/gif" ? "a GIF" : "an image"} under ${sizeLabel}`);
+				return;
+			}
+
+			// Validate minimum dimensions
+			const isValidSize = await validateImageDimensions(file);
+			if (!isValidSize) {
 				return;
 			}
 
@@ -103,8 +135,13 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 			reader.readAsDataURL(file);
 
 			try {
-				const optimizedFile = await optimizeImage(file);
-				setSelectedImage(optimizedFile);
+				// Skip optimization for GIFs to preserve animation
+				if (file.type === "image/gif") {
+					setSelectedImage(file);
+				} else {
+					const optimizedFile = await optimizeImage(file);
+					setSelectedImage(optimizedFile);
+				}
 			} catch {
 				setSelectedImage(file);
 			} finally {
@@ -303,13 +340,13 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 								</div>
 
 								{/* Image */}
-								<div className="relative flex min-h-[300px] w-full items-center justify-center bg-gray-100 dark:bg-gray-800">
+								<div className="relative flex w-full items-center justify-center">
 									{imagePreview ? (
 										<>
 											<img
 												src={imagePreview}
 												alt="Preview"
-												className="w-full object-contain"
+												className="max-h-[600px] object-contain"
 											/>
 											<Button
 												isIconOnly
@@ -337,17 +374,17 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 											<input
 												id={fileInputId}
 												type="file"
-												accept="image/*"
+												accept="image/*,image/gif"
 												onChange={handleImageSelect}
 												className="hidden"
 												disabled={isOptimizing}
 											/>
 											<Camera className="mb-3 h-16 w-16 text-gray-400" />
 											<span className="font-medium text-base text-gray-600 dark:text-gray-400">
-												{isOptimizing ? "Optimizing..." : "Upload image"}
+												{isOptimizing ? "Optimizing..." : "Upload image or GIF"}
 											</span>
 											<span className="mt-1 text-gray-500 text-xs">
-												Auto-optimized • Max 10MB
+												Min 200x200px • Images: Max 10MB • GIFs: Max 5MB
 											</span>
 										</label>
 									)}

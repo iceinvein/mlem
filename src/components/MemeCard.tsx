@@ -128,15 +128,17 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 				</div>
 
 				{imageUrl && !imageError ? (
-					<Image
-						src={imageUrl}
-						alt={meme.title}
-						classNames={{
-							wrapper: "w-full !max-w-full",
-							img: "w-full object-contain",
-						}}
-						onError={() => setImageError(true)}
-					/>
+					<div className="flex w-full items-center justify-center">
+						<Image
+							src={imageUrl}
+							alt={meme.title}
+							classNames={{
+								wrapper: "!max-w-full",
+								img: "max-h-[600px] object-contain",
+							}}
+							onError={() => setImageError(true)}
+						/>
+					</div>
 				) : (
 					<div className="flex h-[300px] flex-col items-center justify-center bg-gray-100 text-gray-400 dark:bg-gray-900">
 						<ImageOff className="mb-3 h-16 w-16" strokeWidth={1.5} />
