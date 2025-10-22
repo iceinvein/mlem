@@ -114,9 +114,10 @@ export function CategoryManagement() {
 						Categories
 					</h2>
 					<Button
-						color="primary"
+						className="bg-gray-900 font-bold text-white dark:bg-gray-100 dark:text-gray-900"
 						startContent={<Plus className="h-4 w-4" />}
 						onPress={() => setIsCreateModalOpen(true)}
+						size="sm"
 						radius="full"
 					>
 						Add Category
@@ -139,16 +140,17 @@ export function CategoryManagement() {
 									isIconOnly
 									onPress={() => openEditModal(category)}
 									radius="full"
+									className="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100"
 								>
 									<Edit3 className="h-4 w-4" />
 								</Button>
 								<Button
 									size="sm"
 									variant="flat"
-									color="danger"
 									isIconOnly
 									onPress={() => openDeleteModal(category._id)}
 									radius="full"
+									className="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100"
 								>
 									<Trash2 className="h-4 w-4" />
 								</Button>
@@ -358,7 +360,7 @@ export function CategoryManagement() {
 					</ModalBody>
 					<div className="space-y-2 border-gray-200 border-t bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
 						<Button
-							className="w-full bg-red-600 font-bold text-white"
+							className="w-full bg-gray-900 font-bold text-white dark:bg-gray-100 dark:text-gray-900"
 							onPress={handleDeleteCategory}
 							size="lg"
 							radius="full"

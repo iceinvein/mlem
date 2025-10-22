@@ -117,7 +117,7 @@ export function Settings() {
 							administrator.
 						</p>
 						<Button
-							color="warning"
+							className="bg-gray-900 font-bold text-white dark:bg-gray-100 dark:text-gray-900"
 							onPress={handleInitializeAdmin}
 							startContent={<Shield className="h-4 w-4" />}
 							size="lg"

@@ -39,9 +39,8 @@ export function CommentModal({ memeId, isOpen, onClose }: CommentModalProps) {
 				content: newComment.trim(),
 			});
 			setNewComment("");
-			toast.success("Comment added!");
 		} catch {
-			toast.error("Failed to add comment");
+			// Silent fail for seamless experience
 		}
 	};
 
@@ -56,18 +55,16 @@ export function CommentModal({ memeId, isOpen, onClose }: CommentModalProps) {
 			});
 			setReplyContent("");
 			setReplyTo(null);
-			toast.success("Reply added!");
 		} catch {
-			toast.error("Failed to add reply");
+			// Silent fail for seamless experience
 		}
 	};
 
 	const handleDeleteComment = async (commentId: Id<"comments">) => {
 		try {
 			await deleteComment({ commentId });
-			toast.success("Comment deleted");
 		} catch {
-			toast.error("Failed to delete comment");
+			// Silent fail for seamless experience
 		}
 	};
 

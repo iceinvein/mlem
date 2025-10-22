@@ -23,7 +23,7 @@ export function Feed() {
 
 	const categories = useQuery(api.memes.getCategories);
 	const userPreferences = useQuery(api.memes.getUserPreferences);
-	const seedData = useMutation(api.memes.seedData);
+	const seedCategories = useMutation(api.memes.seedCategories);
 
 	const memes = useQuery(api.memes.getFeed, {
 		categoryId: selectedCategory || undefined,
@@ -33,9 +33,9 @@ export function Feed() {
 
 	useEffect(() => {
 		if (categories && categories.length === 0) {
-			seedData().catch(console.error);
+			seedCategories().catch(console.error);
 		}
-	}, [categories, seedData]);
+	}, [categories, seedCategories]);
 
 	useEffect(() => {
 		if (userPreferences?.feedSettings) {
@@ -85,11 +85,10 @@ export function Feed() {
 				<div className="scrollbar-hide -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
 					<Chip
 						onClick={() => setSelectedCategory(null)}
-						className={`shrink-0 cursor-pointer transition-all ${
-							!selectedCategory
-								? "bg-black font-bold text-white dark:bg-white dark:text-black"
-								: "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300"
-						}`}
+						className={`shrink-0 cursor-pointer transition-all ${!selectedCategory
+							? "bg-black font-bold text-white dark:bg-white dark:text-black"
+							: "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300"
+							}`}
 						radius="full"
 						size="sm"
 					>
@@ -99,11 +98,10 @@ export function Feed() {
 						<Chip
 							key={category._id}
 							onClick={() => setSelectedCategory(category._id)}
-							className={`shrink-0 cursor-pointer transition-all ${
-								selectedCategory === category._id
-									? "bg-gray-900 font-bold text-white dark:bg-gray-100 dark:text-gray-900"
-									: "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300"
-							}`}
+							className={`shrink-0 cursor-pointer transition-all ${selectedCategory === category._id
+								? "bg-gray-900 font-bold text-white dark:bg-gray-100 dark:text-gray-900"
+								: "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300"
+								}`}
 							radius="full"
 							size="sm"
 						>

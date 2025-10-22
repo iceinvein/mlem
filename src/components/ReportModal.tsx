@@ -82,10 +82,6 @@ export function ReportModal({
 				description: description.trim() || undefined,
 			});
 
-			toast.success(
-				"Report submitted successfully. Thank you for helping keep our community safe.",
-			);
-
 			setSelectedReason("");
 			setDescription("");
 			onClose();

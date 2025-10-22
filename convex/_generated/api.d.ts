@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as comments from "../comments.js";
 import type * as http from "../http.js";
 import type * as memes from "../memes.js";
+import type * as migrations from "../migrations.js";
 import type * as reports from "../reports.js";
 import type * as roles from "../roles.js";
 import type * as router from "../router.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   comments: typeof comments;
   http: typeof http;
   memes: typeof memes;
+  migrations: typeof migrations;
   reports: typeof reports;
   roles: typeof roles;
   router: typeof router;

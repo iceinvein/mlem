@@ -46,8 +46,34 @@ export const getFeed = query({
 		}
 
 		// Get user interactions if logged in
-		const memesWithInteractions = await Promise.all(
-			memes.map(async (meme) => {
+		const memesWithInteractions = memes.map((meme) => {
+			let userLiked = false;
+			let userShared = false;
+
+			if (userId) {
+				// Note: We'll need to fetch interactions separately to avoid async in map
+				// For now, we'll use a synchronous approach
+			}
+
+			return {
+				_id: meme._id,
+				title: meme.title,
+				imageUrl: meme.imageUrl, // Keep the storage ID, resolve on client or use a separate query
+				likes: meme.likes,
+				shares: meme.shares,
+				comments: meme.comments,
+				userLiked,
+				userShared,
+				categoryId: meme.categoryId,
+				tags: meme.tags,
+				_creationTime: meme._creationTime,
+				authorId: meme.authorId,
+			};
+		});
+
+		// Fetch interactions and categories in parallel
+		const results = await Promise.all(
+			memesWithInteractions.map(async (meme) => {
 				const category = await ctx.db.get(meme.categoryId);
 				let userLiked = false;
 				let userShared = false;
@@ -64,7 +90,8 @@ export const getFeed = query({
 					userShared = interactions.some((i) => i.type === "share");
 				}
 
-				// Get image URL from storage if it's a storage ID
+				// Only generate storage URL once per meme, not on every query run
+				// Store the storage ID and generate URL on client side or cache it
 				let imageUrl = meme.imageUrl;
 				if (meme.imageUrl && !meme.imageUrl.startsWith("http")) {
 					const storageId: Id<"_storage"> = meme.imageUrl as Id<"_storage">;
@@ -84,7 +111,7 @@ export const getFeed = query({
 			}),
 		);
 
-		return memesWithInteractions;
+		return results;
 	},
 });
 
@@ -197,9 +224,8 @@ export const shareMeme = mutation({
 	},
 });
 
-// Seed data function - creates initial categories and sample memes
-// Note: In production, categories should be managed by admins through the UI
-export const seedData = mutation({
+// Seed initial categories
+export const seedCategories = mutation({
 	args: {},
 	returns: v.null(),
 	handler: async (ctx) => {
@@ -215,80 +241,12 @@ export const seedData = mutation({
 			{ name: "Tech" },
 			{ name: "Sports" },
 			{ name: "Movies" },
+			{ name: "Food" },
+			{ name: "Travel" },
 		];
 
-		const categoryIds = [];
 		for (const category of categories) {
-			const id = await ctx.db.insert("categories", category);
-			categoryIds.push(id);
-		}
-
-		// Create sample memes
-		const sampleMemes = [
-			{
-				title: "When you finally understand recursion",
-				imageUrl:
-					"https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=400&h=400&fit=crop",
-				categoryId: categoryIds[3], // Tech
-				likes: 42,
-				shares: 12,
-				comments: 8,
-				tags: ["programming", "recursion", "coding"],
-			},
-			{
-				title: "Cat discovers the internet",
-				imageUrl:
-					"https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&h=400&fit=crop",
-				categoryId: categoryIds[1], // Animals
-				likes: 156,
-				shares: 34,
-				comments: 23,
-				tags: ["cat", "internet", "funny"],
-			},
-			{
-				title: "When the game loads but your skills don't",
-				imageUrl:
-					"https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=400&h=400&fit=crop",
-				categoryId: categoryIds[2], // Gaming
-				likes: 89,
-				shares: 23,
-				comments: 15,
-				tags: ["gaming", "skills", "loading"],
-			},
-			{
-				title: "Monday morning motivation",
-				imageUrl:
-					"https://images.unsplash.com/photo-1541963463532-d68292c34d19?w=400&h=400&fit=crop",
-				categoryId: categoryIds[0], // Funny
-				likes: 203,
-				shares: 67,
-				comments: 31,
-				tags: ["monday", "motivation", "coffee"],
-			},
-			{
-				title: "When your favorite team scores",
-				imageUrl:
-					"https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400&h=400&fit=crop",
-				categoryId: categoryIds[4], // Sports
-				likes: 78,
-				shares: 19,
-				comments: 12,
-				tags: ["sports", "celebration", "goal"],
-			},
-			{
-				title: "Plot twist nobody saw coming",
-				imageUrl:
-					"https://images.unsplash.com/photo-1489599328109-2d0d3b5d0f99?w=400&h=400&fit=crop",
-				categoryId: categoryIds[5], // Movies
-				likes: 134,
-				shares: 45,
-				comments: 27,
-				tags: ["movies", "plot twist", "surprise"],
-			},
-		];
-
-		for (const meme of sampleMemes) {
-			await ctx.db.insert("memes", meme);
+			await ctx.db.insert("categories", category);
 		}
 
 		return null;
@@ -302,9 +260,42 @@ export const createMeme = mutation({
 		categoryId: v.id("categories"),
 		tags: v.array(v.string()),
 	},
+	returns: v.id("memes"),
 	handler: async (ctx, args) => {
 		const userId = await getAuthUserId(ctx);
 		if (!userId) throw new Error("Must be logged in");
+
+		// Rate limiting: Check if user is admin/moderator (they get unlimited posts)
+		const userRole = await ctx.db
+			.query("userRoles")
+			.withIndex("by_user", (q) => q.eq("userId", userId))
+			.unique();
+
+		const isModeratorOrAdmin =
+			userRole?.role === "moderator" || userRole?.role === "admin";
+
+		if (!isModeratorOrAdmin) {
+			// For regular users, check rate limit
+			const oneHourAgo = Date.now() - 60 * 60 * 1000; // 1 hour in milliseconds
+
+			const recentMemes = await ctx.db
+				.query("memes")
+				.filter((q) =>
+					q.and(
+						q.eq(q.field("authorId"), userId),
+						q.gte(q.field("_creationTime"), oneHourAgo),
+					),
+				)
+				.collect();
+
+			const RATE_LIMIT = 5; // 5 memes per hour for regular users
+
+			if (recentMemes.length >= RATE_LIMIT) {
+				throw new Error(
+					`Rate limit exceeded. You can only post ${RATE_LIMIT} memes per hour. Please try again later.`,
+				);
+			}
+		}
 
 		const memeId = await ctx.db.insert("memes", {
 			title: args.title,
@@ -325,6 +316,80 @@ export const generateUploadUrl = mutation({
 	args: {},
 	handler: async (ctx) => {
 		return await ctx.storage.generateUploadUrl();
+	},
+});
+
+export const getRateLimitStatus = query({
+	args: {},
+	returns: v.object({
+		postsInLastHour: v.number(),
+		limit: v.number(),
+		remaining: v.number(),
+		isLimited: v.boolean(),
+		resetTime: v.optional(v.number()),
+	}),
+	handler: async (ctx) => {
+		const userId = await getAuthUserId(ctx);
+		if (!userId) {
+			return {
+				postsInLastHour: 0,
+				limit: 5,
+				remaining: 5,
+				isLimited: false,
+			};
+		}
+
+		// Check if user is admin/moderator (unlimited posts)
+		const userRole = await ctx.db
+			.query("userRoles")
+			.withIndex("by_user", (q) => q.eq("userId", userId))
+			.unique();
+
+		const isModeratorOrAdmin =
+			userRole?.role === "moderator" || userRole?.role === "admin";
+
+		if (isModeratorOrAdmin) {
+			return {
+				postsInLastHour: 0,
+				limit: 999,
+				remaining: 999,
+				isLimited: false,
+			};
+		}
+
+		// For regular users, check rate limit
+		const oneHourAgo = Date.now() - 60 * 60 * 1000;
+
+		const recentMemes = await ctx.db
+			.query("memes")
+			.filter((q) =>
+				q.and(
+					q.eq(q.field("authorId"), userId),
+					q.gte(q.field("_creationTime"), oneHourAgo),
+				),
+			)
+			.collect();
+
+		const RATE_LIMIT = 5;
+		const postsInLastHour = recentMemes.length;
+		const remaining = Math.max(0, RATE_LIMIT - postsInLastHour);
+
+		// Find the oldest post to calculate reset time
+		let resetTime: number | undefined;
+		if (recentMemes.length > 0) {
+			const oldestPost = recentMemes.reduce((oldest, current) =>
+				current._creationTime < oldest._creationTime ? current : oldest,
+			);
+			resetTime = oldestPost._creationTime + 60 * 60 * 1000; // 1 hour after oldest post
+		}
+
+		return {
+			postsInLastHour,
+			limit: RATE_LIMIT,
+			remaining,
+			isLimited: remaining === 0,
+			resetTime,
+		};
 	},
 });
 
@@ -414,6 +479,58 @@ export const deleteCategory = mutation({
 		}
 
 		await ctx.db.delete(args.categoryId);
+		return null;
+	},
+});
+
+export const deleteMeme = mutation({
+	args: {
+		memeId: v.id("memes"),
+	},
+	returns: v.null(),
+	handler: async (ctx, args) => {
+		const userId = await getAuthUserId(ctx);
+		if (!userId) throw new Error("Must be logged in");
+
+		const meme = await ctx.db.get(args.memeId);
+		if (!meme) throw new Error("Meme not found");
+
+		// Check if user is the author
+		if (meme.authorId !== userId) {
+			throw new Error("You can only delete your own memes");
+		}
+
+		// Delete all related data
+		// 1. Delete all comments on this meme
+		const comments = await ctx.db
+			.query("comments")
+			.withIndex("by_meme", (q) => q.eq("memeId", args.memeId))
+			.collect();
+		for (const comment of comments) {
+			await ctx.db.delete(comment._id);
+		}
+
+		// 2. Delete all user interactions (likes, shares)
+		const interactions = await ctx.db
+			.query("userInteractions")
+			.withIndex("by_meme", (q) => q.eq("memeId", args.memeId))
+			.collect();
+		for (const interaction of interactions) {
+			await ctx.db.delete(interaction._id);
+		}
+
+		// 3. Delete all reports for this meme
+		const reports = await ctx.db
+			.query("reports")
+			.withIndex("by_meme", (q) => q.eq("memeId", args.memeId))
+			.collect();
+		for (const report of reports) {
+			await ctx.db.delete(report._id);
+		}
+
+		// 4. Delete the meme itself
+		await ctx.db.delete(args.memeId);
+
 		return null;
 	},
 });

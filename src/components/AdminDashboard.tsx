@@ -129,7 +129,7 @@ export function AdminDashboard() {
 	return (
 		<div className="mx-auto max-w-[600px] animate-fade-in px-4 py-6">
 			<div className="mb-6 flex items-center gap-3">
-				<Crown className="h-8 w-8 text-yellow-500" />
+				<Crown className="h-8 w-8 text-gray-900 dark:text-white" />
 				<h2 className="font-black text-3xl text-gray-900 dark:text-white">
 					Admin Panel
 				</h2>
@@ -137,9 +137,9 @@ export function AdminDashboard() {
 
 			{!isLoadingAuth && isAdmin === false ? (
 				<div className="space-y-6">
-					<div className="rounded-3xl border border-gray-200 bg-gray-50 py-16 text-center shadow-xl dark:border-gray-800 dark:bg-gray-900">
-						<ShieldOff className="mx-auto mb-4 h-20 w-20 text-yellow-500" />
-						<h2 className="mb-3 font-bold text-2xl text-yellow-600 dark:text-yellow-500">
+					<div className="rounded-3xl border border-gray-200 bg-gray-50 py-16 text-center dark:border-gray-800 dark:bg-gray-900">
+						<ShieldOff className="mx-auto mb-4 h-20 w-20 text-gray-400 dark:text-gray-600" />
+						<h2 className="mb-3 font-bold text-2xl text-gray-900 dark:text-gray-100">
 							Admin Access Required
 						</h2>
 						<p className="mb-4 px-6 text-gray-600 dark:text-gray-400">
@@ -162,7 +162,7 @@ export function AdminDashboard() {
 								administrator and manage the system.
 							</p>
 							<Button
-								color="warning"
+								className="bg-gray-900 font-bold text-white dark:bg-gray-100 dark:text-gray-900"
 								onPress={handleInitializeAdmin}
 								startContent={<Crown className="h-4 w-4" />}
 								size="lg"
@@ -191,37 +191,37 @@ export function AdminDashboard() {
 				<>
 					{/* Stats Cards */}
 					<div className="mb-6 grid grid-cols-3 gap-3">
-						<Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 dark:border-blue-800 dark:from-blue-950/30 dark:to-blue-900/30">
+						<Card className="border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
 							<CardBody className="items-center justify-center py-4">
-								<Users className="mb-2 h-6 w-6 text-blue-600 dark:text-blue-400" />
-								<p className="font-black text-2xl text-blue-900 dark:text-blue-100">
+								<Users className="mb-2 h-6 w-6 text-gray-600 dark:text-gray-400" />
+								<p className="font-black text-2xl text-gray-900 dark:text-gray-100">
 									{allUsers?.length || 0}
 								</p>
-								<p className="font-medium text-blue-700 text-xs dark:text-blue-300">
+								<p className="font-medium text-gray-600 text-xs dark:text-gray-400">
 									Total Users
 								</p>
 							</CardBody>
 						</Card>
 
-						<Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 dark:border-purple-800 dark:from-purple-950/30 dark:to-purple-900/30">
+						<Card className="border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
 							<CardBody className="items-center justify-center py-4">
-								<Shield className="mb-2 h-6 w-6 text-purple-600 dark:text-purple-400" />
-								<p className="font-black text-2xl text-purple-900 dark:text-purple-100">
+								<Shield className="mb-2 h-6 w-6 text-gray-600 dark:text-gray-400" />
+								<p className="font-black text-2xl text-gray-900 dark:text-gray-100">
 									{roleStats?.moderator || 0}
 								</p>
-								<p className="font-medium text-purple-700 text-xs dark:text-purple-300">
+								<p className="font-medium text-gray-600 text-xs dark:text-gray-400">
 									Moderators
 								</p>
 							</CardBody>
 						</Card>
 
-						<Card className="border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:border-yellow-800 dark:from-yellow-950/30 dark:to-yellow-900/30">
+						<Card className="border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
 							<CardBody className="items-center justify-center py-4">
-								<Crown className="mb-2 h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-								<p className="font-black text-2xl text-yellow-900 dark:text-yellow-100">
+								<Crown className="mb-2 h-6 w-6 text-gray-600 dark:text-gray-400" />
+								<p className="font-black text-2xl text-gray-900 dark:text-gray-100">
 									{roleStats?.admin || 0}
 								</p>
-								<p className="font-medium text-xs text-yellow-700 dark:text-yellow-300">
+								<p className="font-medium text-gray-600 text-xs dark:text-gray-400">
 									Admins
 								</p>
 							</CardBody>
@@ -282,7 +282,7 @@ export function AdminDashboard() {
 										<div className="flex items-start gap-3">
 											<Avatar
 												name={user.name || user.email}
-												className="flex-shrink-0 bg-gradient-to-br from-purple-500 to-pink-500 text-white"
+												className="flex-shrink-0 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
 												size="md"
 											/>
 											<div className="min-w-0 flex-1">
@@ -361,7 +361,7 @@ export function AdminDashboard() {
 													</SelectItem>
 												</Select>
 												<Button
-													color="danger"
+													className="bg-gray-100 font-semibold text-gray-900 dark:bg-gray-900 dark:text-gray-100"
 													variant="flat"
 													size="sm"
 													startContent={<Trash2 className="h-4 w-4" />}
@@ -460,8 +460,8 @@ export function AdminDashboard() {
 					</div>
 					<ModalBody className="p-4">
 						<div className="space-y-3 text-center">
-							<div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/30">
-								<Trash2 className="h-8 w-8 text-red-600 dark:text-red-400" />
+							<div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-900">
+								<Trash2 className="h-8 w-8 text-gray-900 dark:text-gray-100" />
 							</div>
 							<p className="text-center font-semibold text-gray-900 dark:text-gray-100">
 								Are you sure you want to delete{" "}
@@ -481,14 +481,14 @@ export function AdminDashboard() {
 								<li>• All reports filed by this user</li>
 								<li>• User preferences and settings</li>
 							</ul>
-							<p className="text-center font-semibold text-red-600 text-sm dark:text-red-400">
+							<p className="text-center font-semibold text-gray-900 text-sm dark:text-gray-100">
 								This action cannot be undone!
 							</p>
 						</div>
 					</ModalBody>
 					<div className="space-y-2 border-gray-200 border-t bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
 						<Button
-							className="w-full bg-red-600 font-bold text-white"
+							className="w-full bg-gray-900 font-bold text-white dark:bg-gray-100 dark:text-gray-900"
 							onPress={handleDeleteUser}
 							size="lg"
 							radius="full"

@@ -1,11 +1,12 @@
 import { Button, Chip, Image } from "@heroui/react";
-import { useMutation } from "convex/react";
-import { Flag, Heart, ImageOff, MessageCircle, Share2 } from "lucide-react";
-import { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { Flag, Heart, ImageOff, MessageCircle, Share2, Trash2 } from "lucide-react";
+import { memo, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { CommentModal } from "./CommentModal";
+import { DeleteMemeModal } from "./DeleteMemeModal";
 import { ReportModal } from "./ReportModal";
 
 interface MemeCardProps {
@@ -23,43 +24,57 @@ interface MemeCardProps {
 		} | null;
 		tags: string[];
 		_creationTime: number;
+		authorId?: Id<"users">;
 	};
 }
 
-export function MemeCard({ meme }: MemeCardProps) {
+function MemeCardComponent({ meme }: MemeCardProps) {
 	const [showComments, setShowComments] = useState(false);
 	const [showReportModal, setShowReportModal] = useState(false);
+	const [showDeleteModal, setShowDeleteModal] = useState(false);
 	const [imageError, setImageError] = useState(false);
 	const toggleLike = useMutation(api.memes.toggleLike);
 	const shareMeme = useMutation(api.memes.shareMeme);
+	const viewer = useQuery(api.auth.loggedInUser);
 
-	const handleLike = async () => {
-		try {
-			await toggleLike({ memeId: meme._id });
-			toast.success(meme.userLiked ? "Unliked!" : "Liked!");
-		} catch {
-			toast.error("Failed to update like");
-		}
-	};
-
-	const handleShare = async () => {
-		try {
-			await shareMeme({ memeId: meme._id });
-
-			if (navigator.share) {
-				await navigator.share({
-					title: meme.title,
-					text: `Check out this meme: ${meme.title}`,
-					url: window.location.href,
-				});
-			} else {
-				await navigator.clipboard.writeText(window.location.href);
-				toast.success("Link copied to clipboard!");
+	// Memoize the image URL to prevent unnecessary re-renders of the Image component
+	const imageUrl = useMemo(() => meme.imageUrl, [meme.imageUrl]);
+	
+	// Memoize handlers to prevent re-creating them on every render
+	const handleLike = useMemo(
+		() => async () => {
+			try {
+				await toggleLike({ memeId: meme._id });
+			} catch {
+				// Silent fail for seamless experience
 			}
-		} catch {
-			toast.error("Failed to share");
-		}
-	};
+		},
+		[toggleLike, meme._id],
+	);
+
+	const handleShare = useMemo(
+		() => async () => {
+			try {
+				await shareMeme({ memeId: meme._id });
+
+				if (navigator.share) {
+					await navigator.share({
+						title: meme.title,
+						text: `Check out this meme: ${meme.title}`,
+						url: window.location.href,
+					});
+				} else {
+					await navigator.clipboard.writeText(window.location.href);
+					toast.success("Link copied to clipboard!");
+				}
+			} catch {
+				// Silent fail for seamless experience
+			}
+		},
+		[shareMeme, meme._id, meme.title],
+	);
+
+	const isOwnMeme = viewer && meme.authorId === viewer._id;
 
 	return (
 		<>
@@ -80,15 +95,29 @@ export function MemeCard({ meme }: MemeCardProps) {
 							{new Date(meme._creationTime).toLocaleDateString()}
 						</span>
 					</div>
-					<Button
-						isIconOnly
-						size="sm"
-						variant="light"
-						onPress={() => setShowReportModal(true)}
-						aria-label="Report this content"
-					>
-						<Flag className="h-4 w-4" />
-					</Button>
+					<div className="flex items-center gap-1">
+						{isOwnMeme && (
+							<Button
+								isIconOnly
+								size="sm"
+								variant="light"
+								onPress={() => setShowDeleteModal(true)}
+								aria-label="Delete this meme"
+								className="text-red-600 hover:text-red-700"
+							>
+								<Trash2 className="h-4 w-4" />
+							</Button>
+						)}
+						<Button
+							isIconOnly
+							size="sm"
+							variant="light"
+							onPress={() => setShowReportModal(true)}
+							aria-label="Report this content"
+						>
+							<Flag className="h-4 w-4" />
+						</Button>
+					</div>
 				</div>
 
 				{/* Title */}
@@ -98,12 +127,9 @@ export function MemeCard({ meme }: MemeCardProps) {
 					</h3>
 				</div>
 
-				{/* <div className="w-full bg-gray-100 dark:bg-gray-900 min-h-[300px] flex items-center justify-center relative">
-          
-        </div> */}
-				{meme.imageUrl && !imageError ? (
+				{imageUrl && !imageError ? (
 					<Image
-						src={meme.imageUrl}
+						src={imageUrl}
 						alt={meme.title}
 						classNames={{
 							wrapper: "w-full !max-w-full",
@@ -112,7 +138,7 @@ export function MemeCard({ meme }: MemeCardProps) {
 						onError={() => setImageError(true)}
 					/>
 				) : (
-					<div className="flex h-[300px] flex-col items-center justify-center text-gray-400">
+					<div className="flex h-[300px] flex-col items-center justify-center bg-gray-100 text-gray-400 dark:bg-gray-900">
 						<ImageOff className="mb-3 h-16 w-16" strokeWidth={1.5} />
 						<p className="font-medium text-sm">Image not available</p>
 					</div>
@@ -184,6 +210,13 @@ export function MemeCard({ meme }: MemeCardProps) {
 				memeTitle={meme.title}
 			/>
 
+			<DeleteMemeModal
+				memeId={meme._id}
+				memeTitle={meme.title}
+				isOpen={showDeleteModal}
+				onClose={() => setShowDeleteModal(false)}
+			/>
+
 			<ReportModal
 				memeId={meme._id}
 				memeTitle={meme.title}
@@ -193,3 +226,19 @@ export function MemeCard({ meme }: MemeCardProps) {
 		</>
 	);
 }
+
+// Memoize the component to prevent re-renders when meme data hasn't actually changed
+// Note: We DON'T compare imageUrl because storage URLs change on every query
+// The image component will handle URL changes internally without reloading
+export const MemeCard = memo(MemeCardComponent, (prevProps, nextProps) => {
+	// Only re-render if these specific fields change (excluding imageUrl)
+	return (
+		prevProps.meme._id === nextProps.meme._id &&
+		prevProps.meme.likes === nextProps.meme.likes &&
+		prevProps.meme.shares === nextProps.meme.shares &&
+		prevProps.meme.comments === nextProps.meme.comments &&
+		prevProps.meme.userLiked === nextProps.meme.userLiked &&
+		prevProps.meme.userShared === nextProps.meme.userShared &&
+		prevProps.meme.authorId === nextProps.meme.authorId
+	);
+});

@@ -28,6 +28,7 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 	const categories = useQuery(api.memes.getCategories);
 	const createMeme = useMutation(api.memes.createMeme);
 	const generateUploadUrl = useMutation(api.memes.generateUploadUrl);
+	const rateLimitStatus = useQuery(api.memes.getRateLimitStatus);
 
 	const optimizeImage = (file: File): Promise<File> => {
 		return new Promise((resolve) => {
@@ -104,19 +105,8 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 			try {
 				const optimizedFile = await optimizeImage(file);
 				setSelectedImage(optimizedFile);
-
-				const originalSize = (file.size / 1024 / 1024).toFixed(2);
-				const optimizedSize = (optimizedFile.size / 1024 / 1024).toFixed(2);
-				const savings = ((1 - optimizedFile.size / file.size) * 100).toFixed(0);
-
-				if (optimizedFile.size < file.size) {
-					toast.success(
-						`Image optimized: ${originalSize}MB → ${optimizedSize}MB (${savings}% smaller)`,
-					);
-				}
 			} catch {
 				setSelectedImage(file);
-				toast.error("Image optimization failed, using original file");
 			} finally {
 				setIsOptimizing(false);
 			}
@@ -154,8 +144,6 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 				tags: tags,
 			});
 
-			toast.success("Meme created successfully!");
-
 			setTitle("");
 			setSelectedCategory("");
 			setTags([]);
@@ -164,7 +152,9 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 			onClose();
 		} catch (error) {
 			console.error("Error creating meme:", error);
-			toast.error("Failed to create meme");
+			const errorMessage =
+				error instanceof Error ? error.message : "Failed to create meme";
+			toast.error(errorMessage);
 		} finally {
 			setIsUploading(false);
 		}
@@ -209,6 +199,33 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 							<h3 className="font-bold text-base text-gray-900 dark:text-gray-100">
 								Create New Meme
 							</h3>
+							{rateLimitStatus && rateLimitStatus.limit < 999 && (
+								<div className="mt-2 flex items-center gap-2">
+									<Chip
+										size="sm"
+										color={
+											rateLimitStatus.remaining === 0
+												? "danger"
+												: rateLimitStatus.remaining <= 2
+													? "warning"
+													: "success"
+										}
+										variant="flat"
+									>
+										{rateLimitStatus.remaining} / {rateLimitStatus.limit} posts
+										remaining
+									</Chip>
+									{rateLimitStatus.isLimited && rateLimitStatus.resetTime && (
+										<span className="text-xs text-gray-500">
+											Resets in{" "}
+											{Math.ceil(
+												(rateLimitStatus.resetTime - Date.now()) / 1000 / 60,
+											)}{" "}
+											min
+										</span>
+									)}
+								</div>
+							)}
 						</div>
 						<ModalBody className="px-4 py-6">
 							{/* Preview Card with Inline Editing */}
@@ -462,16 +479,21 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 								onPress={handleSubmit}
 								isLoading={isUploading || isOptimizing}
 								isDisabled={
-									!title.trim() || !selectedCategory || !selectedImage
+									!title.trim() ||
+									!selectedCategory ||
+									!selectedImage ||
+									(rateLimitStatus?.isLimited ?? false)
 								}
 								size="lg"
 								radius="full"
 							>
-								{isUploading
-									? "Creating..."
-									: isOptimizing
-										? "Optimizing..."
-										: "Create"}
+								{rateLimitStatus?.isLimited
+									? "Rate Limit Reached"
+									: isUploading
+										? "Creating..."
+										: isOptimizing
+											? "Optimizing..."
+											: "Create"}
 							</Button>
 							<Button
 								variant="flat"
