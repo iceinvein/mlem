@@ -1,6 +1,6 @@
 import { Button, Chip, Modal, ModalBody, ModalContent } from "@heroui/react";
 import { useMutation, useQuery } from "convex/react";
-import { Camera, Check, Edit3, X } from "lucide-react";
+import { AlertCircle, Camera, Check, Edit3, X } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
@@ -23,6 +23,7 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 	const [editingTitle, setEditingTitle] = useState(false);
 	const [editingCategory, setEditingCategory] = useState(false);
 	const [editingTags, setEditingTags] = useState(false);
+	const [validationError, setValidationError] = useState<string | null>(null);
 
 	const fileInputId = useId();
 	const categories = useQuery(api.memes.getCategories);
@@ -81,23 +82,25 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 		});
 	};
 
-	const validateImageDimensions = (file: File): Promise<boolean> => {
+	const validateImageDimensions = (file: File): Promise<string | null> => {
 		return new Promise((resolve) => {
 			const img = new window.Image();
 			img.onload = () => {
-				const MIN_WIDTH = 200;
-				const MIN_HEIGHT = 200;
-				
+				// Different minimum dimensions for GIFs vs regular images
+				// Different minimum dimensions for GIFs vs regular images
+				const MIN_WIDTH = file.type === "image/gif" ? 300 : 400;
+				const MIN_HEIGHT = file.type === "image/gif" ? 200 : 300;
+
 				if (img.width < MIN_WIDTH || img.height < MIN_HEIGHT) {
-					toast.error(`Image too small. Minimum dimensions: ${MIN_WIDTH}x${MIN_HEIGHT}px`);
-					resolve(false);
+					resolve(
+						`${file.type === "image/gif" ? "GIF" : "Image"} too small. Minimum dimensions: ${MIN_WIDTH}x${MIN_HEIGHT}px`,
+					);
 				} else {
-					resolve(true);
+					resolve(null);
 				}
 			};
 			img.onerror = () => {
-				toast.error("Failed to load image");
-				resolve(false);
+				resolve("Failed to load image");
 			};
 			img.src = URL.createObjectURL(file);
 		});
@@ -106,23 +109,27 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 	const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (file) {
+			// Clear any previous validation errors
+			setValidationError(null);
+
 			if (!file.type.startsWith("image/")) {
-				toast.error("Please select a valid image file");
+				setValidationError("Please select a valid image file");
 				return;
 			}
 
-			// GIF size limit: 5MB, other images: 10MB
-			const maxSize = file.type === "image/gif" ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
-			const sizeLabel = file.type === "image/gif" ? "5MB" : "10MB";
-			
-			if (file.size > maxSize) {
-				toast.error(`Image too large. Please select ${file.type === "image/gif" ? "a GIF" : "an image"} under ${sizeLabel}`);
-				return;
+			// Only enforce file size limit for GIFs (images will be optimized)
+			if (file.type === "image/gif") {
+				const maxSize = 5 * 1024 * 1024; // 5MB for GIFs
+				if (file.size > maxSize) {
+					setValidationError("GIF too large. Please select a GIF under 5MB");
+					return;
+				}
 			}
 
 			// Validate minimum dimensions
-			const isValidSize = await validateImageDimensions(file);
-			if (!isValidSize) {
+			const dimensionError = await validateImageDimensions(file);
+			if (dimensionError) {
+				setValidationError(dimensionError);
 				return;
 			}
 
@@ -253,7 +260,7 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 										remaining
 									</Chip>
 									{rateLimitStatus.isLimited && rateLimitStatus.resetTime && (
-										<span className="text-xs text-gray-500">
+										<span className="text-gray-500 text-xs">
 											Resets in{" "}
 											{Math.ceil(
 												(rateLimitStatus.resetTime - Date.now()) / 1000 / 60,
@@ -265,13 +272,35 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 							)}
 						</div>
 						<ModalBody className="px-4 py-6">
+							{/* Validation Error Alert */}
+							{validationError && (
+								<div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
+									<div className="flex items-start gap-3">
+										<AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
+										<div className="flex-1">
+											<p className="font-medium text-red-900 text-sm dark:text-red-100">
+												{validationError}
+											</p>
+										</div>
+										<button
+											type="button"
+											onClick={() => setValidationError(null)}
+											className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+											title="Dismiss"
+										>
+											<X className="h-4 w-4" />
+										</button>
+									</div>
+								</div>
+							)}
+
 							{/* Preview Card with Inline Editing */}
 							<div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
 								{/* Header with Category */}
 								<div className="flex items-center justify-between border-gray-100 border-b px-4 py-3 dark:border-gray-800">
 									<div className="flex flex-1 items-center gap-3">
 										{selectedCategory &&
-										categories?.find((c) => c._id === selectedCategory) ? (
+											categories?.find((c) => c._id === selectedCategory) ? (
 											<Chip
 												size="sm"
 												className="cursor-pointer bg-gray-100 font-semibold text-gray-900 dark:bg-gray-800 dark:text-gray-100"
@@ -369,7 +398,7 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 									) : (
 										<label
 											htmlFor={fileInputId}
-											className="flex h-full w-full cursor-pointer flex-col items-center justify-center transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+											className="flex h-full w-full cursor-pointer flex-col items-center justify-center py-12 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
 										>
 											<input
 												id={fileInputId}
@@ -384,7 +413,7 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 												{isOptimizing ? "Optimizing..." : "Upload image or GIF"}
 											</span>
 											<span className="mt-1 text-gray-500 text-xs">
-												Min 200x200px • Images: Max 10MB • GIFs: Max 5MB
+												Images: Min 400x400px • GIFs: Min 300x300px, Max 5MB
 											</span>
 										</label>
 									)}
@@ -465,18 +494,16 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 																setSelectedCategory(category._id);
 																setEditingCategory(false);
 															}}
-															className={`flex w-full items-center gap-4 rounded-2xl p-4 transition-all ${
-																isSelected
+															className={`flex w-full items-center gap-4 rounded-2xl p-4 transition-all ${isSelected
 																	? "bg-gray-900 dark:bg-gray-100"
 																	: "bg-white hover:bg-gray-100 dark:bg-gray-900 dark:hover:bg-gray-800"
-															}`}
+																}`}
 														>
 															<span
-																className={`flex-1 text-left font-semibold ${
-																	isSelected
+																className={`flex-1 text-left font-semibold ${isSelected
 																		? "text-white dark:text-gray-900"
 																		: "text-gray-900 dark:text-gray-100"
-																}`}
+																	}`}
 															>
 																{category.name}
 															</span>

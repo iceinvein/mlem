@@ -7,9 +7,8 @@ import {
 	Textarea,
 } from "@heroui/react";
 import { useMutation, useQuery } from "convex/react";
-import { MessageCircle, Reply, Trash2 } from "lucide-react";
+import { MessageCircle, Send, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
@@ -93,12 +92,12 @@ export function CommentModal({ memeId, isOpen, onClose }: CommentModalProps) {
 			}}
 			classNames={{
 				wrapper: "items-end",
-				base: "max-w-[600px] mx-auto !h-[50vh] rounded-t-3xl mb-0 sm:mb-0",
+				base: "max-w-[600px] mx-auto h-[50vh]! rounded-t-3xl mb-0 sm:mb-0",
 				backdrop: "backdrop-blur-sm bg-black/50",
 			}}
 			scrollBehavior="inside"
 		>
-			<ModalContent className="!h-[50vh] bg-gray-50 dark:bg-gray-950">
+			<ModalContent className="h-[50vh]! bg-gray-50 dark:bg-gray-950">
 				{/* Header with drag indicator */}
 				<div className="flex flex-col items-center border-gray-200 border-b pt-2 pb-3 dark:border-gray-800">
 					<div className="mb-3 h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-700" />
@@ -153,6 +152,7 @@ export function CommentModal({ memeId, isOpen, onClose }: CommentModalProps) {
 												{comment.content}
 											</p>
 											<button
+												type="button"
 												onClick={() => setReplyTo(comment._id)}
 												className="font-semibold text-gray-500 text-xs hover:text-gray-700 dark:hover:text-gray-300"
 											>
@@ -213,26 +213,38 @@ export function CommentModal({ memeId, isOpen, onClose }: CommentModalProps) {
 									{/* Reply Input */}
 									{replyTo === comment._id && (
 										<div className="mt-3 ml-11 space-y-2">
-											<Textarea
-												value={replyContent}
-												onValueChange={setReplyContent}
-												placeholder="Write a reply..."
-												minRows={2}
-												autoFocus
-												classNames={{
-													inputWrapper:
-														"bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800",
-												}}
-											/>
+											<div className="rounded-2xl bg-gray-100 p-3 dark:bg-gray-800">
+												<Textarea
+													value={replyContent}
+													onValueChange={setReplyContent}
+													placeholder="Write a reply..."
+													minRows={2}
+													autoFocus
+													classNames={{
+														inputWrapper:
+															"bg-transparent border-0 shadow-none p-0",
+														input: "text-sm",
+													}}
+													onKeyDown={(e) => {
+														if (e.key === "Enter" && !e.shiftKey) {
+															e.preventDefault();
+															if (replyContent.trim()) {
+																handleAddReply();
+															}
+														}
+													}}
+												/>
+											</div>
 											<div className="flex gap-2">
 												<Button
 													size="sm"
-													className="bg-gray-900 font-bold text-white dark:bg-gray-100 dark:text-gray-900"
+													className="bg-gray-900 font-bold text-white dark:bg-white dark:text-gray-900"
 													onPress={handleAddReply}
 													isDisabled={!replyContent.trim()}
 													radius="full"
+													startContent={<Send className="h-3.5 w-3.5" />}
 												>
-													Reply
+													Send
 												</Button>
 												<Button
 													size="sm"
@@ -242,6 +254,7 @@ export function CommentModal({ memeId, isOpen, onClose }: CommentModalProps) {
 														setReplyContent("");
 													}}
 													radius="full"
+													className="bg-gray-100 dark:bg-gray-800"
 												>
 													Cancel
 												</Button>
@@ -268,34 +281,43 @@ export function CommentModal({ memeId, isOpen, onClose }: CommentModalProps) {
 				</ModalBody>
 
 				{/* Fixed Comment Input at Bottom */}
-				<div className="border-gray-200 border-t bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
-					<div className="flex items-end gap-3">
-						<Textarea
-							value={newComment}
-							onValueChange={setNewComment}
-							placeholder="Add a comment..."
-							minRows={1}
-							maxRows={4}
-							classNames={{
-								inputWrapper:
-									"bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800",
-								input: "text-sm",
-							}}
-							className="flex-1"
-						/>
+				<div className="border-gray-200 border-t bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+					<div className="flex items-end gap-2">
+						<div className="relative flex-1">
+							<Textarea
+								value={newComment}
+								onValueChange={setNewComment}
+								placeholder="Add a comment..."
+								minRows={1}
+								maxRows={4}
+								classNames={{
+									inputWrapper:
+										"bg-gray-100 dark:bg-gray-800 border-0 shadow-none",
+									input: "text-sm",
+								}}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" && !e.shiftKey) {
+										e.preventDefault();
+										if (newComment.trim()) {
+											handleAddComment();
+										}
+									}
+								}}
+							/>
+						</div>
 						<Button
 							isIconOnly
-							className={`shrink-0 ${
+							className={`shrink-0 transition-all ${
 								newComment.trim()
-									? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
-									: "bg-gray-200 text-gray-400 dark:bg-gray-800"
+									? "scale-100 bg-gray-900 text-white dark:bg-white dark:text-gray-900"
+									: "scale-95 bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600"
 							}`}
 							onPress={handleAddComment}
 							isDisabled={!newComment.trim()}
 							radius="full"
-							size="lg"
+							size="md"
 						>
-							<Reply className="h-5 w-5 rotate-180" />
+							<Send className="h-5 w-5" />
 						</Button>
 					</div>
 				</div>

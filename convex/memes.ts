@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import type { Doc, Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 
 export const getCategories = query({
@@ -14,66 +15,47 @@ export const getFeed = query({
 	args: {
 		categoryId: v.optional(v.id("categories")),
 		sortBy: v.optional(v.union(v.literal("newest"), v.literal("popular"))),
-		limit: v.optional(v.number()),
+		paginationOpts: paginationOptsValidator,
 	},
 	handler: async (ctx, args) => {
 		const userId = await getAuthUserId(ctx);
-		const limit = args.limit || 20;
 		const sortBy = args.sortBy || "newest";
 
-		let memes: Doc<"memes">[];
+		// biome-ignore lint: paginatedResult type is inferred
+		let paginatedResult;
 
 		if (args.categoryId) {
 			const categoryId: Id<"categories"> = args.categoryId;
-			memes = await ctx.db
+			paginatedResult = await ctx.db
 				.query("memes")
 				.withIndex("by_category", (q) => q.eq("categoryId", categoryId))
 				.order("desc")
-				.take(limit);
+				.paginate(args.paginationOpts);
 		} else if (sortBy === "popular") {
-			memes = await ctx.db
+			paginatedResult = await ctx.db
 				.query("memes")
 				.withIndex("by_likes")
 				.order("desc")
-				.take(limit);
+				.paginate(args.paginationOpts);
 		} else {
-			memes = await ctx.db.query("memes").order("desc").take(limit);
+			paginatedResult = await ctx.db
+				.query("memes")
+				.order("desc")
+				.paginate(args.paginationOpts);
 		}
+
+		const memes = paginatedResult.page;
 
 		// Sort by popularity if needed and category filter is applied
 		if (args.categoryId && sortBy === "popular") {
-			memes = memes.sort((a, b) => b.likes - a.likes);
+			memes.sort(
+				(a: { likes: number }, b: { likes: number }) => b.likes - a.likes,
+			);
 		}
-
-		// Get user interactions if logged in
-		const memesWithInteractions = memes.map((meme) => {
-			let userLiked = false;
-			let userShared = false;
-
-			if (userId) {
-				// Note: We'll need to fetch interactions separately to avoid async in map
-				// For now, we'll use a synchronous approach
-			}
-
-			return {
-				_id: meme._id,
-				title: meme.title,
-				imageUrl: meme.imageUrl, // Keep the storage ID, resolve on client or use a separate query
-				likes: meme.likes,
-				shares: meme.shares,
-				comments: meme.comments,
-				userLiked,
-				userShared,
-				categoryId: meme.categoryId,
-				tags: meme.tags,
-				_creationTime: meme._creationTime,
-				authorId: meme.authorId,
-			};
-		});
 
 		// Fetch interactions and categories in parallel
 		const results = await Promise.all(
-			memesWithInteractions.map(async (meme) => {
+			memes.map(async (meme) => {
 				const category = await ctx.db.get(meme.categoryId);
 				let userLiked = false;
 				let userShared = false;
@@ -90,8 +72,6 @@ export const getFeed = query({
 					userShared = interactions.some((i) => i.type === "share");
 				}
 
-				// Only generate storage URL once per meme, not on every query run
-				// Store the storage ID and generate URL on client side or cache it
 				let imageUrl = meme.imageUrl;
 				if (meme.imageUrl && !meme.imageUrl.startsWith("http")) {
 					const storageId: Id<"_storage"> = meme.imageUrl as Id<"_storage">;
@@ -102,16 +82,28 @@ export const getFeed = query({
 				}
 
 				return {
-					...meme,
+					_id: meme._id,
+					title: meme.title,
 					imageUrl,
-					category,
+					likes: meme.likes,
+					shares: meme.shares,
+					comments: meme.comments,
 					userLiked,
 					userShared,
+					categoryId: meme.categoryId,
+					tags: meme.tags,
+					_creationTime: meme._creationTime,
+					authorId: meme.authorId,
+					category,
 				};
 			}),
 		);
 
-		return results;
+		return {
+			page: results,
+			isDone: paginatedResult.isDone,
+			continueCursor: paginatedResult.continueCursor,
+		};
 	},
 });
 

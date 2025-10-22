@@ -80,6 +80,7 @@ export function TagInput({
 					placeholder={tags.length === 0 ? placeholder : ""}
 					disabled={tags.length >= maxTags}
 					className="min-w-[120px] flex-1 bg-transparent text-gray-900 text-sm outline-none placeholder:text-gray-400 dark:text-gray-100"
+					autoFocus
 				/>
 			</div>
 

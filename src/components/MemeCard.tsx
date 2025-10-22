@@ -1,6 +1,13 @@
 import { Button, Chip, Image } from "@heroui/react";
 import { useMutation, useQuery } from "convex/react";
-import { Flag, Heart, ImageOff, MessageCircle, Share2, Trash2 } from "lucide-react";
+import {
+	Flag,
+	Heart,
+	ImageOff,
+	MessageCircle,
+	Share2,
+	Trash2,
+} from "lucide-react";
 import { memo, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
@@ -39,7 +46,7 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 
 	// Memoize the image URL to prevent unnecessary re-renders of the Image component
 	const imageUrl = useMemo(() => meme.imageUrl, [meme.imageUrl]);
-	
+
 	// Memoize handlers to prevent re-creating them on every render
 	const handleLike = useMemo(
 		() => async () => {

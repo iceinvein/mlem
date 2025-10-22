@@ -1,13 +1,15 @@
 import { Button, Chip, Modal, ModalBody, ModalContent } from "@heroui/react";
-import { useMutation, useQuery } from "convex/react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import {
 	Clock,
 	Drama,
+	Loader2,
 	Plus,
 	SlidersHorizontal,
 	TrendingUp,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { CreateMemeModal } from "./CreateMemeModal";
@@ -20,16 +22,20 @@ export function Feed() {
 		useState<Id<"categories"> | null>(null);
 	const [showCreateModal, setShowCreateModal] = useState(false);
 	const [showSortModal, setShowSortModal] = useState(false);
+	const parentRef = useRef<HTMLDivElement>(null);
 
 	const categories = useQuery(api.memes.getCategories);
 	const userPreferences = useQuery(api.memes.getUserPreferences);
 	const seedCategories = useMutation(api.memes.seedCategories);
 
-	const memes = useQuery(api.memes.getFeed, {
-		categoryId: selectedCategory || undefined,
-		sortBy,
-		limit: 20,
-	});
+	const { results, status, loadMore } = usePaginatedQuery(
+		api.memes.getFeed,
+		{
+			categoryId: selectedCategory || undefined,
+			sortBy,
+		},
+		{ initialNumItems: 10 },
+	);
 
 	useEffect(() => {
 		if (categories && categories.length === 0) {
@@ -43,12 +49,32 @@ export function Feed() {
 		}
 	}, [userPreferences]);
 
-	const filteredMemes = memes?.filter((meme) => {
+	const filteredMemes = results?.filter((meme) => {
 		if (!userPreferences?.feedSettings.showOnlyFavorites) return true;
 		return userPreferences.favoriteCategories.includes(meme.categoryId);
 	});
 
-	const isLoading = !memes || !categories;
+	const isLoading = status === "LoadingFirstPage" || !categories;
+
+	// Virtualization setup
+	const rowVirtualizer = useVirtualizer({
+		count: filteredMemes?.length || 0,
+		getScrollElement: () => parentRef.current,
+		estimateSize: () => 600, // Estimated height of a MemeCard
+		overscan: 2,
+		onChange: (instance) => {
+			const virtualItems = instance.getVirtualItems();
+			const [lastItem] = [...virtualItems].reverse();
+
+			if (
+				lastItem &&
+				lastItem.index >= (filteredMemes?.length || 0) - 1 &&
+				status === "CanLoadMore"
+			) {
+				loadMore(10);
+			}
+		},
+	});
 
 	return (
 		<div className="mx-auto max-w-[600px]">
@@ -85,10 +111,11 @@ export function Feed() {
 				<div className="scrollbar-hide -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
 					<Chip
 						onClick={() => setSelectedCategory(null)}
-						className={`shrink-0 cursor-pointer transition-all ${!selectedCategory
-							? "bg-black font-bold text-white dark:bg-white dark:text-black"
-							: "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300"
-							}`}
+						className={`shrink-0 cursor-pointer transition-all ${
+							!selectedCategory
+								? "bg-black font-bold text-white dark:bg-white dark:text-black"
+								: "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300"
+						}`}
 						radius="full"
 						size="sm"
 					>
@@ -98,10 +125,11 @@ export function Feed() {
 						<Chip
 							key={category._id}
 							onClick={() => setSelectedCategory(category._id)}
-							className={`shrink-0 cursor-pointer transition-all ${selectedCategory === category._id
-								? "bg-gray-900 font-bold text-white dark:bg-gray-100 dark:text-gray-900"
-								: "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300"
-								}`}
+							className={`shrink-0 cursor-pointer transition-all ${
+								selectedCategory === category._id
+									? "bg-gray-900 font-bold text-white dark:bg-gray-100 dark:text-gray-900"
+									: "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300"
+							}`}
 							radius="full"
 							size="sm"
 						>
@@ -112,16 +140,57 @@ export function Feed() {
 			</div>
 
 			{/* Feed Content */}
-			<div className="space-y-0">
+			<div ref={parentRef} className="h-[calc(100vh-180px)] overflow-auto">
 				{isLoading ? (
 					// Show skeleton loaders while loading
-					<>
+					<div className="space-y-0">
 						<MemeCardSkeleton />
 						<MemeCardSkeleton />
 						<MemeCardSkeleton />
-					</>
+					</div>
 				) : filteredMemes && filteredMemes.length > 0 ? (
-					filteredMemes.map((meme) => <MemeCard key={meme._id} meme={meme} />)
+					<div
+						style={{
+							height: `${rowVirtualizer.getTotalSize()}px`,
+							width: "100%",
+							position: "relative",
+						}}
+					>
+						{rowVirtualizer.getVirtualItems().map((virtualItem) => {
+							const meme = filteredMemes[virtualItem.index];
+							return (
+								<div
+									key={virtualItem.key}
+									data-index={virtualItem.index}
+									ref={rowVirtualizer.measureElement}
+									style={{
+										position: "absolute",
+										top: 0,
+										left: 0,
+										width: "100%",
+										transform: `translateY(${virtualItem.start}px)`,
+									}}
+								>
+									<MemeCard meme={meme} />
+								</div>
+							);
+						})}
+						{/* Load more indicator */}
+						{status === "CanLoadMore" && (
+							<div
+								style={{
+									position: "absolute",
+									top: `${rowVirtualizer.getTotalSize()}px`,
+									width: "100%",
+								}}
+								className="py-8"
+							>
+								<div className="flex justify-center">
+									<Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+								</div>
+							</div>
+						)}
+					</div>
 				) : (
 					<div className="px-4 py-20 text-center">
 						<div className="mb-4 flex justify-center">

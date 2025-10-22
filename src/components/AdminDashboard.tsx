@@ -282,7 +282,7 @@ export function AdminDashboard() {
 										<div className="flex items-start gap-3">
 											<Avatar
 												name={user.name || user.email}
-												className="flex-shrink-0 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
+												className="flex-shrink-0 bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
 												size="md"
 											/>
 											<div className="min-w-0 flex-1">

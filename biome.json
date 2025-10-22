@@ -28,11 +28,7 @@
 					"level": "warn",
 					"fix": "safe",
 					"options": {
-						"functions": [
-							"cn",
-							"clsx",
-							"twMerge"
-						]
+						"functions": ["cn", "clsx", "twMerge"]
 					}
 				}
 			}
