@@ -42,4 +42,20 @@ window.addEventListener('message', async (message) => {
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+		outDir: "dist",
+		rollupOptions: {
+			output: {
+				manualChunks: (path) => {
+					const reversedPath = path.split("/").reverse();
+					return reversedPath[reversedPath.indexOf("node_modules") - 1];
+				},
+			},
+			onwarn(warning, warn) {
+				if (warning.code === "MODULE_LEVEL_DIRECTIVE") return;
+				warn(warning);
+			},
+		},
+		chunkSizeWarningLimit: 1600,
+	},
 }));

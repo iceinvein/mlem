@@ -1,54 +1,74 @@
 import { useQuery } from "convex/react";
+import { Crown, Folder, Home, Settings, Shield } from "lucide-react";
 import { api } from "../../convex/_generated/api";
-import { Home, FolderOpen, Settings, Shield } from "lucide-react";
-import { Button } from "@heroui/react";
 
 interface BottomNavProps {
-  activeTab: "feed" | "categories" | "settings" | "moderation";
-  onTabChange: (tab: "feed" | "categories" | "settings" | "moderation") => void;
+	activeTab: "feed" | "settings" | "moderation" | "categories" | "admin";
+	onTabChange: (
+		tab: "feed" | "settings" | "moderation" | "categories" | "admin",
+	) => void;
 }
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
-  const isModerator = useQuery(api.roles.checkIsModerator);
+	const isModerator = useQuery(api.roles.checkIsModerator);
+	const isAdmin = useQuery(api.roles.checkIsAdmin);
 
-  const baseTabs = [
-    { id: "feed" as const, label: "Feed", icon: Home },
-    { id: "categories" as const, label: "Categories", icon: FolderOpen },
-    { id: "settings" as const, label: "Settings", icon: Settings },
-  ];
+	type TabId = "feed" | "settings" | "moderation" | "categories" | "admin";
+	type TabConfig = { id: TabId; label: string; icon: typeof Home };
 
-  const tabs = isModerator
-    ? [...baseTabs.slice(0, 2), { id: "moderation" as const, label: "Moderation", icon: Shield }, baseTabs[2]]
-    : baseTabs;
+	// Build tabs array based on user role
+	const buildTabs = (): TabConfig[] => {
+		const allTabs: TabConfig[] = [{ id: "feed", label: "Feed", icon: Home }];
 
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 backdrop-blur-2xl bg-white/90 dark:bg-black/90 border-t border-gray-200/50 dark:border-gray-800/50 z-50 safe-area-inset-bottom">
-      <div className="flex justify-around items-center max-w-[600px] mx-auto px-2 py-1">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              className="flex flex-col items-center py-2 px-4 transition-all"
-            >
-              <Icon
-                className={`w-6 h-6 mb-1 transition-all ${isActive
-                    ? "text-black dark:text-white scale-110"
-                    : "text-gray-400 dark:text-gray-600"
-                  }`}
-              />
-              <span className={`text-xs font-medium transition-all ${isActive
-                  ? "text-black dark:text-white"
-                  : "text-gray-400 dark:text-gray-600"
-                }`}>
-                {tab.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </nav>
-  );
+		if (isModerator) {
+			allTabs.push({ id: "moderation", label: "Moderate", icon: Shield });
+		}
+
+		if (isAdmin) {
+			allTabs.push({ id: "categories", label: "Categories", icon: Folder });
+			allTabs.push({ id: "admin", label: "Admin", icon: Crown });
+		}
+
+		allTabs.push({ id: "settings", label: "Settings", icon: Settings });
+
+		return allTabs;
+	};
+
+	const tabs = buildTabs();
+
+	return (
+		<nav className="safe-area-inset-bottom fixed right-0 bottom-0 left-0 z-50 border-gray-200/50 border-t bg-gray-50/95 backdrop-blur-2xl dark:border-gray-800/50 dark:bg-gray-950/95">
+			<div className="mx-auto flex max-w-[600px] items-center justify-around px-2 py-1">
+				{tabs.map((tab) => {
+					const Icon = tab.icon;
+					const isActive = activeTab === tab.id;
+					return (
+						<button
+							key={tab.id}
+							type="button"
+							onClick={() => onTabChange(tab.id)}
+							className="flex flex-col items-center px-4 py-2 transition-all"
+						>
+							<Icon
+								className={`mb-1 h-6 w-6 transition-all ${
+									isActive
+										? "scale-110 text-black dark:text-white"
+										: "text-gray-400 dark:text-gray-600"
+								}`}
+							/>
+							<span
+								className={`font-medium text-xs transition-all ${
+									isActive
+										? "text-black dark:text-white"
+										: "text-gray-400 dark:text-gray-600"
+								}`}
+							>
+								{tab.label}
+							</span>
+						</button>
+					);
+				})}
+			</div>
+		</nav>
+	);
 }

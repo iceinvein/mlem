@@ -8,7 +8,9 @@
     "dev:frontend": "vite --open",
     "dev:backend": "convex dev",
     "build": "vite build",
-    "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && biome check"
+    "lint": "biome check --fix",
+    "typecheck:convex": "tsc -p convex -noEmit --pretty false && convex dev --once",
+    "typecheck": "tsc -b -noEmit --pretty false"
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.90",
