@@ -300,7 +300,7 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 								<div className="flex items-center justify-between border-gray-100 border-b px-4 py-3 dark:border-gray-800">
 									<div className="flex flex-1 items-center gap-3">
 										{selectedCategory &&
-											categories?.find((c) => c._id === selectedCategory) ? (
+										categories?.find((c) => c._id === selectedCategory) ? (
 											<Chip
 												size="sm"
 												className="cursor-pointer bg-gray-100 font-semibold text-gray-900 dark:bg-gray-800 dark:text-gray-100"
@@ -494,16 +494,18 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 																setSelectedCategory(category._id);
 																setEditingCategory(false);
 															}}
-															className={`flex w-full items-center gap-4 rounded-2xl p-4 transition-all ${isSelected
+															className={`flex w-full items-center gap-4 rounded-2xl p-4 transition-all ${
+																isSelected
 																	? "bg-gray-900 dark:bg-gray-100"
 																	: "bg-white hover:bg-gray-100 dark:bg-gray-900 dark:hover:bg-gray-800"
-																}`}
+															}`}
 														>
 															<span
-																className={`flex-1 text-left font-semibold ${isSelected
+																className={`flex-1 text-left font-semibold ${
+																	isSelected
 																		? "text-white dark:text-gray-900"
 																		: "text-gray-900 dark:text-gray-100"
-																	}`}
+																}`}
 															>
 																{category.name}
 															</span>

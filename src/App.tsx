@@ -1,6 +1,5 @@
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Drama } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { api } from "../convex/_generated/api";
@@ -10,9 +9,7 @@ import { CategoryManagement } from "./components/CategoryManagement";
 import { Feed } from "./components/Feed";
 import { ModerationDashboard } from "./components/ModerationDashboard";
 import { Settings } from "./components/Settings";
-import { ThemeToggle } from "./components/ThemeToggle";
 import { SignInForm } from "./SignInForm";
-import { SignOutButton } from "./SignOutButton";
 
 export default function App() {
 	const [showNav, setShowNav] = useState(false);
@@ -38,25 +35,33 @@ export default function App() {
 				}}
 				className="fixed top-0 right-0 left-0 z-50 border-gray-200/50 border-b bg-gray-50/95 backdrop-blur-2xl dark:border-gray-800/50 dark:bg-gray-950/95"
 			>
-				<div className="mx-auto flex h-14 max-w-[600px] items-center justify-between px-4">
-					<motion.h2
-						initial={{ opacity: 0, x: -20 }}
-						animate={showNav ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
-						transition={{ delay: 0.4, duration: 0.5 }}
-						className="font-black text-gray-900 text-xl dark:text-white"
-					>
-						Share my meme
-					</motion.h2>
+				<div className="mx-auto flex h-14 max-w-[600px] items-center justify-center px-4">
 					<motion.div
-						initial={{ opacity: 0, x: 20 }}
-						animate={showNav ? { opacity: 1, x: 0 } : { opacity: 0, x: 20 }}
-						transition={{ delay: 0.5, duration: 0.5 }}
-						className="flex items-center gap-2"
+						initial={{ opacity: 0, scale: 0.8 }}
+						animate={
+							showNav ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }
+						}
+						transition={{
+							delay: 0.4,
+							duration: 0.5,
+							type: "spring",
+							stiffness: 200,
+						}}
+						className="flex items-center gap-3"
 					>
-						<ThemeToggle />
-						<Authenticated>
-							<SignOutButton />
-						</Authenticated>
+						<img
+							src="/logo.png"
+							alt="MLEM"
+							className="h-8 w-8 object-contain dark:hidden"
+						/>
+						<img
+							src="/logo-negative.png"
+							alt="MLEM"
+							className="hidden h-8 w-8 object-contain dark:block"
+						/>
+						<h2 className="font-black text-gray-900 text-xl dark:text-white">
+							MLEM
+						</h2>
 					</motion.div>
 				</div>
 			</motion.header>
@@ -119,7 +124,7 @@ function Content() {
 					transition={{ duration: 0.5 }}
 					className="flex min-h-[70vh] flex-col items-center justify-center px-4"
 				>
-					{/* Animated Icon */}
+					{/* Animated Logo */}
 					<motion.div
 						initial={{ scale: 0, rotate: -180 }}
 						animate={{ scale: 1, rotate: 0 }}
@@ -142,7 +147,16 @@ function Content() {
 							}}
 							className="relative rounded-3xl bg-pink-500 p-6 shadow-2xl"
 						>
-							<Drama className="h-16 w-16 text-white" strokeWidth={2} />
+							<img
+								src="/logo.png"
+								alt="MLEM"
+								className="h-16 w-16 object-contain dark:hidden"
+							/>
+							<img
+								src="/logo-negative.png"
+								alt="MLEM"
+								className="hidden h-16 w-16 object-contain dark:block"
+							/>
 						</motion.div>
 					</motion.div>
 
@@ -164,7 +178,7 @@ function Content() {
 							}}
 							className="bg-[length:200%_auto] bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text font-black text-3xl text-transparent"
 						>
-							Share my meme
+							MLEM
 						</motion.h2>
 						<div className="flex items-center justify-center gap-2">
 							{[0, 1, 2].map((i) => (
@@ -202,13 +216,19 @@ function Content() {
 				<div className="flex min-h-[calc(100vh-14rem)] animate-fade-in flex-col items-center justify-center px-4">
 					<div className="mb-8 space-y-4 text-center">
 						<div className="mb-4 flex animate-bounce-slow justify-center">
-							<Drama
-								className="h-20 w-20 text-gray-900 dark:text-white"
-								strokeWidth={1.5}
+							<img
+								src="/logo.png"
+								alt="MLEM"
+								className="h-20 w-20 object-contain dark:hidden"
+							/>
+							<img
+								src="/logo-negative.png"
+								alt="MLEM"
+								className="hidden h-20 w-20 object-contain dark:block"
 							/>
 						</div>
 						<h1 className="font-black text-5xl text-gray-900 dark:text-white">
-							Share my meme
+							MLEM
 						</h1>
 						<p className="max-w-md text-gray-600 text-lg dark:text-gray-400">
 							Discover and share the funniest memes

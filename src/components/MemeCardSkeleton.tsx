@@ -1,11 +1,17 @@
 export function MemeCardSkeleton() {
 	return (
 		<article className="animate-pulse border-gray-200 border-b bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
-			{/* Header */}
+			{/* Header with Author */}
 			<div className="flex items-center justify-between px-4 py-3">
 				<div className="flex items-center gap-3">
-					<div className="h-6 w-24 rounded-full bg-gray-200 dark:bg-gray-800" />
-					<div className="h-4 w-20 rounded-lg bg-gray-200 dark:bg-gray-800" />
+					{/* Avatar */}
+					<div className="h-8 w-8 shrink-0 rounded-full bg-gray-200 dark:bg-gray-800" />
+					<div className="flex flex-col gap-1.5">
+						{/* Author name */}
+						<div className="h-4 w-24 rounded-lg bg-gray-200 dark:bg-gray-800" />
+						{/* Category and date */}
+						<div className="h-3 w-32 rounded-lg bg-gray-200 dark:bg-gray-800" />
+					</div>
 				</div>
 				<div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-800" />
 			</div>

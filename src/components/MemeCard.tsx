@@ -1,4 +1,4 @@
-import { Button, Chip, Image } from "@heroui/react";
+import { Avatar, Button, Image } from "@heroui/react";
 import { useMutation, useQuery } from "convex/react";
 import {
 	Flag,
@@ -32,6 +32,10 @@ interface MemeCardProps {
 		tags: string[];
 		_creationTime: number;
 		authorId?: Id<"users">;
+		author: {
+			name?: string;
+			email?: string;
+		} | null;
 	};
 }
 
@@ -83,24 +87,37 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 
 	const isOwnMeme = viewer && meme.authorId === viewer._id;
 
+	const authorName = meme.author?.name || meme.author?.email || "Anonymous";
+	const authorInitial =
+		meme.author?.name?.[0] || meme.author?.email?.[0] || "?";
+
 	return (
 		<>
 			<article className="border-gray-200 border-b bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
-				{/* Header */}
+				{/* Header with Author Info */}
 				<div className="flex items-center justify-between px-4 py-3">
 					<div className="flex items-center gap-3">
-						{meme.category && (
-							<Chip
-								size="sm"
-								className="bg-gray-100 font-semibold text-gray-900 dark:bg-gray-900 dark:text-gray-100"
-								radius="full"
-							>
-								{meme.category.name}
-							</Chip>
-						)}
-						<span className="text-gray-500 text-xs">
-							{new Date(meme._creationTime).toLocaleDateString()}
-						</span>
+						<Avatar
+							size="sm"
+							name={authorInitial}
+							className="shrink-0 bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
+						/>
+						<div className="flex min-w-0 flex-col">
+							<span className="truncate font-semibold text-gray-900 text-sm dark:text-gray-100">
+								{authorName}
+							</span>
+							<div className="flex items-center gap-2">
+								{meme.category && (
+									<span className="font-medium text-gray-600 text-xs dark:text-gray-400">
+										{meme.category.name}
+									</span>
+								)}
+								<span className="text-gray-500 text-xs">•</span>
+								<span className="text-gray-500 text-xs">
+									{new Date(meme._creationTime).toLocaleDateString()}
+								</span>
+							</div>
+						</div>
 					</div>
 					<div className="flex items-center gap-1">
 						{isOwnMeme && (
@@ -248,6 +265,7 @@ export const MemeCard = memo(MemeCardComponent, (prevProps, nextProps) => {
 		prevProps.meme.comments === nextProps.meme.comments &&
 		prevProps.meme.userLiked === nextProps.meme.userLiked &&
 		prevProps.meme.userShared === nextProps.meme.userShared &&
-		prevProps.meme.authorId === nextProps.meme.authorId
+		prevProps.meme.authorId === nextProps.meme.authorId &&
+		prevProps.meme.author?.name === nextProps.meme.author?.name
 	);
 });

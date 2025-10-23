@@ -53,10 +53,11 @@ export const getFeed = query({
 			);
 		}
 
-		// Fetch interactions and categories in parallel
+		// Fetch interactions, categories, and author info in parallel
 		const results = await Promise.all(
 			memes.map(async (meme) => {
 				const category = await ctx.db.get(meme.categoryId);
+				const author = meme.authorId ? await ctx.db.get(meme.authorId) : null;
 				let userLiked = false;
 				let userShared = false;
 
@@ -95,6 +96,12 @@ export const getFeed = query({
 					_creationTime: meme._creationTime,
 					authorId: meme.authorId,
 					category,
+					author: author
+						? {
+								name: author.name,
+								email: author.email,
+							}
+						: null,
 				};
 			}),
 		);

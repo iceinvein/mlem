@@ -93,19 +93,6 @@ export function CategoryManagement() {
 		setIsEditModalOpen(true);
 	};
 
-	if (!categories) {
-		return (
-			<div className="mx-auto max-w-[600px] animate-pulse px-4 py-6">
-				<div className="mb-6 h-10 w-48 rounded-lg bg-gray-200 dark:bg-gray-800" />
-				<div className="space-y-3">
-					<div className="h-16 rounded-lg bg-gray-200 dark:bg-gray-800" />
-					<div className="h-16 rounded-lg bg-gray-200 dark:bg-gray-800" />
-					<div className="h-16 rounded-lg bg-gray-200 dark:bg-gray-800" />
-				</div>
-			</div>
-		);
-	}
-
 	return (
 		<>
 			<div className="mx-auto max-w-[600px] animate-fade-in px-4 py-6">
@@ -124,40 +111,48 @@ export function CategoryManagement() {
 					</Button>
 				</div>
 
-				<div className="space-y-3">
-					{categories.map((category) => (
-						<div
-							key={category._id}
-							className="flex items-center justify-between rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900"
-						>
-							<p className="font-semibold text-gray-900 dark:text-gray-100">
-								{category.name}
-							</p>
-							<div className="flex gap-2">
-								<Button
-									size="sm"
-									variant="flat"
-									isIconOnly
-									onPress={() => openEditModal(category)}
-									radius="full"
-									className="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100"
-								>
-									<Edit3 className="h-4 w-4" />
-								</Button>
-								<Button
-									size="sm"
-									variant="flat"
-									isIconOnly
-									onPress={() => openDeleteModal(category._id)}
-									radius="full"
-									className="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100"
-								>
-									<Trash2 className="h-4 w-4" />
-								</Button>
+				{!categories ? (
+					<div className="animate-pulse space-y-3">
+						<div className="h-16 rounded-2xl bg-gray-200 dark:bg-gray-800" />
+						<div className="h-16 rounded-2xl bg-gray-200 dark:bg-gray-800" />
+						<div className="h-16 rounded-2xl bg-gray-200 dark:bg-gray-800" />
+					</div>
+				) : (
+					<div className="space-y-3">
+						{categories.map((category) => (
+							<div
+								key={category._id}
+								className="flex items-center justify-between rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900"
+							>
+								<p className="font-semibold text-gray-900 dark:text-gray-100">
+									{category.name}
+								</p>
+								<div className="flex gap-2">
+									<Button
+										size="sm"
+										variant="flat"
+										isIconOnly
+										onPress={() => openEditModal(category)}
+										radius="full"
+										className="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100"
+									>
+										<Edit3 className="h-4 w-4" />
+									</Button>
+									<Button
+										size="sm"
+										variant="flat"
+										isIconOnly
+										onPress={() => openDeleteModal(category._id)}
+										radius="full"
+										className="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100"
+									>
+										<Trash2 className="h-4 w-4" />
+									</Button>
+								</div>
 							</div>
-						</div>
-					))}
-				</div>
+						))}
+					</div>
+				)}
 
 				<div className="mt-8 rounded-2xl border border-gray-200 bg-gray-100 p-5 dark:border-gray-800 dark:bg-gray-900">
 					<h3 className="mb-2 font-bold text-base text-gray-900 dark:text-gray-100">
@@ -349,7 +344,7 @@ export function CategoryManagement() {
 						<p className="text-center text-gray-900 dark:text-gray-100">
 							Are you sure you want to delete{" "}
 							<span className="font-bold">
-								{categories.find((c) => c._id === deletingCategoryId)?.name}
+								{categories?.find((c) => c._id === deletingCategoryId)?.name}
 							</span>
 							?
 						</p>

@@ -1,15 +1,18 @@
+import { useAuthActions } from "@convex-dev/auth/react";
 import {
 	Button,
 	Card,
 	CardBody,
 	CardHeader,
 	Chip,
+	Input,
 	Select,
 	SelectItem,
 	Switch,
 } from "@heroui/react";
 import { useMutation, useQuery } from "convex/react";
-import { Check, Shield } from "lucide-react";
+import { Check, Edit3, LogOut, Monitor, Moon, Shield, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
@@ -20,14 +23,21 @@ export function Settings() {
 	const userPreferences = useQuery(api.memes.getUserPreferences);
 	const updatePreferences = useMutation(api.memes.updateUserPreferences);
 	const loggedInUser = useQuery(api.auth.loggedInUser);
+	const currentUser = useQuery(api.users.getCurrentUser);
 	const isAdmin = useQuery(api.roles.checkIsAdmin);
 	const initializeFirstAdmin = useMutation(api.roles.initializeFirstAdmin);
+	const updateUsername = useMutation(api.users.updateUsername);
+	const { signOut } = useAuthActions();
+	const { theme, setTheme } = useTheme();
 
 	const [favoriteCategories, setFavoriteCategories] = useState<
 		Id<"categories">[]
 	>([]);
 	const [sortBy, setSortBy] = useState<"newest" | "popular">("newest");
 	const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+	const [isEditingUsername, setIsEditingUsername] = useState(false);
+	const [newUsername, setNewUsername] = useState("");
+	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
 		if (userPreferences) {
@@ -36,6 +46,10 @@ export function Settings() {
 			setShowOnlyFavorites(userPreferences.feedSettings.showOnlyFavorites);
 		}
 	}, [userPreferences]);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
 
 	const handleSavePreferences = async () => {
 		try {
@@ -89,6 +103,84 @@ export function Settings() {
 					<h3 className="mb-3 font-bold text-base text-gray-900 dark:text-gray-100">
 						Account
 					</h3>
+
+					{/* Username Section */}
+					<div className="mb-3">
+						{isEditingUsername ? (
+							<div className="space-y-2">
+								<Input
+									value={newUsername}
+									onValueChange={setNewUsername}
+									placeholder="Enter new username"
+									size="lg"
+									classNames={{
+										inputWrapper: "bg-white dark:bg-gray-950",
+									}}
+								/>
+								<div className="flex gap-2">
+									<Button
+										size="sm"
+										className="bg-gray-900 font-bold text-white dark:bg-white dark:text-gray-900"
+										onPress={async () => {
+											try {
+												await updateUsername({ newUsername });
+												toast.success("Username updated successfully!");
+												setIsEditingUsername(false);
+												setNewUsername("");
+											} catch (error) {
+												const errorMessage =
+													error instanceof Error
+														? error.message
+														: "Failed to update username";
+												toast.error(errorMessage);
+											}
+										}}
+										isDisabled={!newUsername.trim()}
+										radius="full"
+									>
+										Save
+									</Button>
+									<Button
+										size="sm"
+										variant="flat"
+										onPress={() => {
+											setIsEditingUsername(false);
+											setNewUsername("");
+										}}
+										radius="full"
+										className="bg-gray-100 dark:bg-gray-800"
+									>
+										Cancel
+									</Button>
+								</div>
+							</div>
+						) : (
+							<div className="flex items-center justify-between">
+								<div>
+									<p className="font-semibold text-gray-900 text-sm dark:text-gray-100">
+										{currentUser?.name || "Anonymous"}
+									</p>
+									{currentUser?.canChangeUsername && (
+										<p className="text-gray-500 text-xs">
+											You can change your username once
+										</p>
+									)}
+								</div>
+								{currentUser?.canChangeUsername && (
+									<Button
+										isIconOnly
+										size="sm"
+										variant="flat"
+										onPress={() => setIsEditingUsername(true)}
+										className="bg-gray-100 dark:bg-gray-800"
+									>
+										<Edit3 className="h-4 w-4" />
+									</Button>
+								)}
+							</div>
+						)}
+					</div>
+
 					<p className="text-gray-600 text-sm dark:text-gray-400">
 						{loggedInUser.email}
 					</p>
@@ -245,9 +337,117 @@ export function Settings() {
 				</>
 			)}
 
-			<div className="mt-6 rounded-2xl border border-gray-200 bg-gray-100 p-5 dark:border-gray-800 dark:bg-gray-900">
+			<div className="mb-6 rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-900">
+				<h3 className="mb-4 font-bold text-base text-gray-900 dark:text-gray-100">
+					Appearance
+				</h3>
+
+				<div className="space-y-2">
+					<p className="font-semibold text-gray-900 text-sm dark:text-gray-100">
+						Theme
+					</p>
+					<div className="grid grid-cols-3 gap-2">
+						<button
+							type="button"
+							onClick={() => setTheme("light")}
+							disabled={!mounted}
+							className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
+								mounted && theme === "light"
+									? "border-gray-900 bg-gray-900 dark:border-gray-100 dark:bg-gray-100"
+									: "border-gray-200 bg-gray-50 hover:border-gray-300 dark:border-gray-800 dark:bg-gray-950 dark:hover:border-gray-700"
+							}`}
+						>
+							<Sun
+								className={`h-5 w-5 ${
+									mounted && theme === "light"
+										? "text-white dark:text-gray-900"
+										: "text-gray-600 dark:text-gray-400"
+								}`}
+							/>
+							<span
+								className={`font-semibold text-xs ${
+									mounted && theme === "light"
+										? "text-white dark:text-gray-900"
+										: "text-gray-600 dark:text-gray-400"
+								}`}
+							>
+								Light
+							</span>
+						</button>
+
+						<button
+							type="button"
+							onClick={() => setTheme("dark")}
+							disabled={!mounted}
+							className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
+								mounted && theme === "dark"
+									? "border-gray-900 bg-gray-900 dark:border-gray-100 dark:bg-gray-100"
+									: "border-gray-200 bg-gray-50 hover:border-gray-300 dark:border-gray-800 dark:bg-gray-950 dark:hover:border-gray-700"
+							}`}
+						>
+							<Moon
+								className={`h-5 w-5 ${
+									mounted && theme === "dark"
+										? "text-white dark:text-gray-900"
+										: "text-gray-600 dark:text-gray-400"
+								}`}
+							/>
+							<span
+								className={`font-semibold text-xs ${
+									mounted && theme === "dark"
+										? "text-white dark:text-gray-900"
+										: "text-gray-600 dark:text-gray-400"
+								}`}
+							>
+								Dark
+							</span>
+						</button>
+
+						<button
+							type="button"
+							onClick={() => setTheme("system")}
+							disabled={!mounted}
+							className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
+								mounted && theme === "system"
+									? "border-gray-900 bg-gray-900 dark:border-gray-100 dark:bg-gray-100"
+									: "border-gray-200 bg-gray-50 hover:border-gray-300 dark:border-gray-800 dark:bg-gray-950 dark:hover:border-gray-700"
+							}`}
+						>
+							<Monitor
+								className={`h-5 w-5 ${
+									mounted && theme === "system"
+										? "text-white dark:text-gray-900"
+										: "text-gray-600 dark:text-gray-400"
+								}`}
+							/>
+							<span
+								className={`font-semibold text-xs ${
+									mounted && theme === "system"
+										? "text-white dark:text-gray-900"
+										: "text-gray-600 dark:text-gray-400"
+								}`}
+							>
+								System
+							</span>
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<Button
+				className="mb-6 w-full border-gray-200 bg-gray-50 font-bold text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-white"
+				onPress={() => void signOut()}
+				startContent={<LogOut className="h-4 w-4" />}
+				size="lg"
+				radius="full"
+				variant="bordered"
+			>
+				Sign Out
+			</Button>
+
+			<div className="rounded-2xl border border-gray-200 bg-gray-100 p-5 dark:border-gray-800 dark:bg-gray-900">
 				<h3 className="mb-2 font-bold text-base text-gray-900 dark:text-gray-100">
-					About Share my meme
+					About MLEM
 				</h3>
 				<p className="text-gray-600 text-sm leading-relaxed dark:text-gray-400">
 					Discover and share the funniest memes with our community. Customize

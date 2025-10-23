@@ -16,6 +16,8 @@ import type * as migrations from "../migrations.js";
 import type * as reports from "../reports.js";
 import type * as roles from "../roles.js";
 import type * as router from "../router.js";
+import type * as usernameGenerator from "../usernameGenerator.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -40,6 +42,8 @@ declare const fullApi: ApiFromModules<{
   reports: typeof reports;
   roles: typeof roles;
   router: typeof router;
+  usernameGenerator: typeof usernameGenerator;
+  users: typeof users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 

@@ -91,6 +91,12 @@ const applicationTables = {
 	})
 		.index("by_user", ["userId"])
 		.index("by_role", ["role"]),
+
+	userMetadata: defineTable({
+		userId: v.id("users"),
+		hasChangedUsername: v.boolean(),
+		usernameChangedAt: v.optional(v.number()),
+	}).index("by_user", ["userId"]),
 };
 
 export default defineSchema({
