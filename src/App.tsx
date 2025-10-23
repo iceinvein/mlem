@@ -1,14 +1,16 @@
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { api } from "../convex/_generated/api";
+import type { Id } from "../convex/_generated/dataModel";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { BottomNav } from "./components/BottomNav";
 import { CategoryManagement } from "./components/CategoryManagement";
 import { Feed } from "./components/Feed";
 import { ModerationDashboard } from "./components/ModerationDashboard";
 import { Settings } from "./components/Settings";
+import { SinglePost } from "./components/SinglePost";
 import { SignInForm } from "./SignInForm";
 
 export default function App() {
@@ -82,6 +84,24 @@ function Content() {
 	>("feed");
 	const [showSplash, setShowSplash] = useState(true);
 	const [minLoadingComplete, setMinLoadingComplete] = useState(false);
+	const [currentMemeId, setCurrentMemeId] = useState<string | null>(null);
+
+	// Handle URL hash changes for routing
+	useEffect(() => {
+		const handleHashChange = () => {
+			const hash = window.location.hash;
+			if (hash.startsWith("#/post/")) {
+				const memeId = hash.replace("#/post/", "");
+				setCurrentMemeId(memeId);
+			} else {
+				setCurrentMemeId(null);
+			}
+		};
+
+		handleHashChange();
+		window.addEventListener("hashchange", handleHashChange);
+		return () => window.removeEventListener("hashchange", handleHashChange);
+	}, []);
 
 	// Reset to feed if user loses moderation access
 	if (activeTab === "moderation" && isModerator === false) {
@@ -116,97 +136,95 @@ function Content() {
 
 	if (showSplash) {
 		return (
-			<AnimatePresence>
+			<motion.div
+				initial={{ opacity: 0 }}
+				animate={{ opacity: 1 }}
+				exit={{ opacity: 0, scale: 0.95 }}
+				transition={{ duration: 0.5 }}
+				className="flex min-h-[70vh] flex-col items-center justify-center px-4"
+			>
+				{/* Animated Logo */}
 				<motion.div
-					initial={{ opacity: 0 }}
-					animate={{ opacity: 1 }}
-					exit={{ opacity: 0, scale: 0.95 }}
-					transition={{ duration: 0.5 }}
-					className="flex min-h-[70vh] flex-col items-center justify-center px-4"
+					initial={{ scale: 0, rotate: -180 }}
+					animate={{ scale: 1, rotate: 0 }}
+					transition={{
+						type: "spring",
+						stiffness: 200,
+						damping: 15,
+						delay: 0.2,
+					}}
+					className="relative mb-8"
 				>
-					{/* Animated Logo */}
 					<motion.div
-						initial={{ scale: 0, rotate: -180 }}
-						animate={{ scale: 1, rotate: 0 }}
-						transition={{
-							type: "spring",
-							stiffness: 200,
-							damping: 15,
-							delay: 0.2,
+						animate={{
+							y: [0, -10, 0],
 						}}
-						className="relative mb-8"
+						transition={{
+							duration: 1.5,
+							repeat: Number.POSITIVE_INFINITY,
+							ease: "easeInOut",
+						}}
+						className="relative rounded-3xl bg-pink-500 p-6 shadow-2xl"
 					>
-						<motion.div
-							animate={{
-								y: [0, -10, 0],
-							}}
-							transition={{
-								duration: 1.5,
-								repeat: Number.POSITIVE_INFINITY,
-								ease: "easeInOut",
-							}}
-							className="relative rounded-3xl bg-pink-500 p-6 shadow-2xl"
-						>
-							<img
-								src="/logo.png"
-								alt="MLEM"
-								className="h-16 w-16 object-contain dark:hidden"
-							/>
-							<img
-								src="/logo-negative.png"
-								alt="MLEM"
-								className="hidden h-16 w-16 object-contain dark:block"
-							/>
-						</motion.div>
-					</motion.div>
-
-					{/* Loading Text */}
-					<motion.div
-						initial={{ opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ delay: 0.5, duration: 0.5 }}
-						className="space-y-3 text-center"
-					>
-						<motion.h2
-							animate={{
-								backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-							}}
-							transition={{
-								duration: 3,
-								repeat: Number.POSITIVE_INFINITY,
-								ease: "linear",
-							}}
-							className="bg-[length:200%_auto] bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text font-black text-3xl text-transparent"
-						>
-							MLEM
-						</motion.h2>
-						<div className="flex items-center justify-center gap-2">
-							{[0, 1, 2].map((i) => (
-								<motion.div
-									key={i}
-									animate={{
-										y: [0, -10, 0],
-										scale: [1, 1.2, 1],
-									}}
-									transition={{
-										duration: 0.6,
-										repeat: Number.POSITIVE_INFINITY,
-										delay: i * 0.15,
-										ease: "easeInOut",
-									}}
-									className={`h-2 w-2 rounded-full ${
-										i === 0
-											? "bg-purple-500"
-											: i === 1
-												? "bg-pink-500"
-												: "bg-orange-500"
-									}`}
-								/>
-							))}
-						</div>
+						<img
+							src="/logo.png"
+							alt="MLEM"
+							className="h-16 w-16 object-contain dark:hidden"
+						/>
+						<img
+							src="/logo-negative.png"
+							alt="MLEM"
+							className="hidden h-16 w-16 object-contain dark:block"
+						/>
 					</motion.div>
 				</motion.div>
-			</AnimatePresence>
+
+				{/* Loading Text */}
+				<motion.div
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ delay: 0.5, duration: 0.5 }}
+					className="space-y-3 text-center"
+				>
+					<motion.h2
+						animate={{
+							backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+						}}
+						transition={{
+							duration: 3,
+							repeat: Number.POSITIVE_INFINITY,
+							ease: "linear",
+						}}
+						className="bg-[length:200%_auto] bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text font-black text-3xl text-transparent"
+					>
+						MLEM
+					</motion.h2>
+					<div className="flex items-center justify-center gap-2">
+						{[0, 1, 2].map((i) => (
+							<motion.div
+								key={i}
+								animate={{
+									y: [0, -10, 0],
+									scale: [1, 1.2, 1],
+								}}
+								transition={{
+									duration: 0.6,
+									repeat: Number.POSITIVE_INFINITY,
+									delay: i * 0.15,
+									ease: "easeInOut",
+								}}
+								className={`h-2 w-2 rounded-full ${
+									i === 0
+										? "bg-purple-500"
+										: i === 1
+											? "bg-pink-500"
+											: "bg-orange-500"
+								}`}
+							/>
+						))}
+					</div>
+				</motion.div>
+			</motion.div>
 		);
 	}
 
@@ -242,13 +260,25 @@ function Content() {
 
 			<Authenticated>
 				<div className="relative">
-					{activeTab === "feed" && <Feed />}
-					{activeTab === "moderation" && <ModerationDashboard />}
-					{activeTab === "categories" && <CategoryManagement />}
-					{activeTab === "admin" && <AdminDashboard />}
-					{activeTab === "settings" && <Settings />}
+					{currentMemeId ? (
+						<SinglePost
+							memeId={currentMemeId as Id<"memes">}
+							onBack={() => {
+								window.location.hash = "";
+								setCurrentMemeId(null);
+							}}
+						/>
+					) : (
+						<>
+							{activeTab === "feed" && <Feed />}
+							{activeTab === "moderation" && <ModerationDashboard />}
+							{activeTab === "categories" && <CategoryManagement />}
+							{activeTab === "admin" && <AdminDashboard />}
+							{activeTab === "settings" && <Settings />}
 
-					<BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+							<BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+						</>
+					)}
 				</div>
 			</Authenticated>
 		</>

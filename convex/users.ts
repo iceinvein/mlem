@@ -1,5 +1,6 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 
 export const updateUsername = mutation({
@@ -99,5 +100,110 @@ export const getCurrentUser = query({
 			email: user.email,
 			canChangeUsername,
 		};
+	},
+});
+
+export const getUserProfile = query({
+	args: {
+		userId: v.id("users"),
+	},
+	returns: v.union(
+		v.object({
+			_id: v.id("users"),
+			name: v.optional(v.string()),
+			email: v.optional(v.string()),
+			_creationTime: v.number(),
+			totalPosts: v.number(),
+			totalLikes: v.number(),
+		}),
+		v.null(),
+	),
+	handler: async (ctx, args) => {
+		const user = await ctx.db.get(args.userId);
+		if (!user) return null;
+
+		// Get user's memes
+		const memes = await ctx.db
+			.query("memes")
+			.filter((q) => q.eq(q.field("authorId"), args.userId))
+			.collect();
+
+		const totalPosts = memes.length;
+		const totalLikes = memes.reduce((sum, meme) => sum + meme.likes, 0);
+
+		return {
+			_id: user._id,
+			name: user.name,
+			email: user.email,
+			_creationTime: user._creationTime,
+			totalPosts,
+			totalLikes,
+		};
+	},
+});
+
+export const getUserMemes = query({
+	args: {
+		userId: v.id("users"),
+	},
+	returns: v.array(
+		v.object({
+			_id: v.id("memes"),
+			title: v.string(),
+			imageUrl: v.string(),
+			likes: v.number(),
+			shares: v.number(),
+			comments: v.number(),
+			categoryId: v.id("categories"),
+			tags: v.array(v.string()),
+			_creationTime: v.number(),
+			category: v.union(
+				v.object({
+					name: v.string(),
+				}),
+				v.null(),
+			),
+		}),
+	),
+	handler: async (ctx, args) => {
+		const memes = await ctx.db
+			.query("memes")
+			.filter((q) => q.eq(q.field("authorId"), args.userId))
+			.order("desc")
+			.collect();
+
+		const results = await Promise.all(
+			memes.map(async (meme) => {
+				const category = await ctx.db.get(meme.categoryId);
+
+				let imageUrl = meme.imageUrl;
+				if (meme.imageUrl && !meme.imageUrl.startsWith("http")) {
+					const storageId = meme.imageUrl as Id<"_storage">;
+					const storageUrl = await ctx.storage.getUrl(storageId);
+					if (storageUrl) {
+						imageUrl = storageUrl;
+					}
+				}
+
+				return {
+					_id: meme._id,
+					title: meme.title,
+					imageUrl,
+					likes: meme.likes,
+					shares: meme.shares,
+					comments: meme.comments || 0,
+					categoryId: meme.categoryId,
+					tags: meme.tags,
+					_creationTime: meme._creationTime,
+					category: category
+						? {
+								name: category.name,
+							}
+						: null,
+				};
+			}),
+		);
+
+		return results;
 	},
 });

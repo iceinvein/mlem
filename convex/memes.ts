@@ -533,3 +533,98 @@ export const deleteMeme = mutation({
 		return null;
 	},
 });
+
+export const getSingleMeme = query({
+	args: {
+		memeId: v.id("memes"),
+	},
+	returns: v.union(
+		v.object({
+			_id: v.id("memes"),
+			title: v.string(),
+			imageUrl: v.string(),
+			likes: v.number(),
+			shares: v.number(),
+			comments: v.number(),
+			userLiked: v.boolean(),
+			userShared: v.boolean(),
+			categoryId: v.id("categories"),
+			tags: v.array(v.string()),
+			_creationTime: v.number(),
+			authorId: v.optional(v.id("users")),
+			category: v.union(
+				v.object({
+					name: v.string(),
+				}),
+				v.null(),
+			),
+			author: v.union(
+				v.object({
+					name: v.optional(v.string()),
+					email: v.optional(v.string()),
+				}),
+				v.null(),
+			),
+		}),
+		v.null(),
+	),
+	handler: async (ctx, args) => {
+		const userId = await getAuthUserId(ctx);
+
+		const meme = await ctx.db.get(args.memeId);
+		if (!meme) return null;
+
+		const category = await ctx.db.get(meme.categoryId);
+		const author = meme.authorId ? await ctx.db.get(meme.authorId) : null;
+
+		let userLiked = false;
+		let userShared = false;
+
+		if (userId) {
+			const interactions = await ctx.db
+				.query("userInteractions")
+				.withIndex("by_user_and_meme", (q) =>
+					q.eq("userId", userId).eq("memeId", meme._id),
+				)
+				.collect();
+
+			userLiked = interactions.some((i) => i.type === "like");
+			userShared = interactions.some((i) => i.type === "share");
+		}
+
+		let imageUrl = meme.imageUrl;
+		if (meme.imageUrl && !meme.imageUrl.startsWith("http")) {
+			const storageId: Id<"_storage"> = meme.imageUrl as Id<"_storage">;
+			const storageUrl = await ctx.storage.getUrl(storageId);
+			if (storageUrl) {
+				imageUrl = storageUrl;
+			}
+		}
+
+		return {
+			_id: meme._id,
+			title: meme.title,
+			imageUrl,
+			likes: meme.likes,
+			shares: meme.shares,
+			comments: meme.comments || 0,
+			userLiked,
+			userShared,
+			categoryId: meme.categoryId,
+			tags: meme.tags,
+			_creationTime: meme._creationTime,
+			authorId: meme.authorId,
+			category: category
+				? {
+						name: category.name,
+					}
+				: null,
+			author: author
+				? {
+						name: author.name,
+						email: author.email,
+					}
+				: null,
+		};
+	},
+});

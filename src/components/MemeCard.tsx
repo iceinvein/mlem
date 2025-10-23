@@ -9,12 +9,13 @@ import {
 	Trash2,
 } from "lucide-react";
 import { memo, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { CommentModal } from "./CommentModal";
 import { DeleteMemeModal } from "./DeleteMemeModal";
 import { ReportModal } from "./ReportModal";
+import { ShareModal } from "./ShareModal";
+import { UserProfileModal } from "./UserProfileModal";
 
 interface MemeCardProps {
 	meme: {
@@ -43,6 +44,8 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 	const [showComments, setShowComments] = useState(false);
 	const [showReportModal, setShowReportModal] = useState(false);
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
+	const [showShareModal, setShowShareModal] = useState(false);
+	const [showUserProfile, setShowUserProfile] = useState(false);
 	const [imageError, setImageError] = useState(false);
 	const toggleLike = useMutation(api.memes.toggleLike);
 	const shareMeme = useMutation(api.memes.shareMeme);
@@ -67,22 +70,12 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 		() => async () => {
 			try {
 				await shareMeme({ memeId: meme._id });
-
-				if (navigator.share) {
-					await navigator.share({
-						title: meme.title,
-						text: `Check out this meme: ${meme.title}`,
-						url: window.location.href,
-					});
-				} else {
-					await navigator.clipboard.writeText(window.location.href);
-					toast.success("Link copied to clipboard!");
-				}
+				setShowShareModal(true);
 			} catch {
 				// Silent fail for seamless experience
 			}
 		},
-		[shareMeme, meme._id, meme.title],
+		[shareMeme, meme._id],
 	);
 
 	const isOwnMeme = viewer && meme.authorId === viewer._id;
@@ -94,9 +87,14 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 	return (
 		<>
 			<article className="border-gray-200 border-b bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
-				{/* Header with Author Info */}
-				<div className="flex items-center justify-between px-4 py-3">
-					<div className="flex items-center gap-3">
+				{/* Header with Author Info and Category */}
+				<div className="flex items-start justify-between px-4 py-3">
+					<button
+						type="button"
+						onClick={() => meme.authorId && setShowUserProfile(true)}
+						className="flex min-w-0 items-center gap-3 hover:opacity-80"
+						disabled={!meme.authorId}
+					>
 						<Avatar
 							size="sm"
 							name={authorInitial}
@@ -106,42 +104,16 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 							<span className="truncate font-semibold text-gray-900 text-sm dark:text-gray-100">
 								{authorName}
 							</span>
-							<div className="flex items-center gap-2">
-								{meme.category && (
-									<span className="font-medium text-gray-600 text-xs dark:text-gray-400">
-										{meme.category.name}
-									</span>
-								)}
-								<span className="text-gray-500 text-xs">•</span>
-								<span className="text-gray-500 text-xs">
-									{new Date(meme._creationTime).toLocaleDateString()}
-								</span>
-							</div>
+							<span className="text-gray-500 text-xs">
+								{new Date(meme._creationTime).toLocaleDateString()}
+							</span>
 						</div>
-					</div>
-					<div className="flex items-center gap-1">
-						{isOwnMeme && (
-							<Button
-								isIconOnly
-								size="sm"
-								variant="light"
-								onPress={() => setShowDeleteModal(true)}
-								aria-label="Delete this meme"
-								className="text-red-600 hover:text-red-700"
-							>
-								<Trash2 className="h-4 w-4" />
-							</Button>
-						)}
-						<Button
-							isIconOnly
-							size="sm"
-							variant="light"
-							onPress={() => setShowReportModal(true)}
-							aria-label="Report this content"
-						>
-							<Flag className="h-4 w-4" />
-						</Button>
-					</div>
+					</button>
+					{meme.category && (
+						<span className="rounded-full bg-gray-200 px-3 py-1 font-medium text-gray-700 text-xs dark:bg-gray-800 dark:text-gray-300">
+							{meme.category.name}
+						</span>
+					)}
 				</div>
 
 				{/* Title */}
@@ -170,47 +142,74 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 					</div>
 				)}
 
-				{/* Actions */}
+				{/* Actions and Tags */}
 				<div className="px-4 py-3">
-					<div className="mb-3 flex items-center gap-4">
-						<button
-							type="button"
-							onClick={handleLike}
-							className="group flex items-center gap-2"
-						>
-							<Heart
-								className={`h-6 w-6 transition-all ${
-									meme.userLiked
-										? "scale-110 fill-red-500 text-red-500"
-										: "text-gray-900 group-hover:text-gray-500 dark:text-gray-100"
-								}`}
-							/>
-							<span className="font-semibold text-gray-900 text-sm dark:text-gray-100">
-								{meme.likes}
-							</span>
-						</button>
+					<div className="mb-3 flex items-center justify-between">
+						<div className="flex items-center gap-4">
+							<button
+								type="button"
+								onClick={handleLike}
+								className="group flex items-center gap-2"
+							>
+								<Heart
+									className={`h-6 w-6 transition-all ${
+										meme.userLiked
+											? "scale-110 fill-red-500 text-red-500"
+											: "text-gray-900 group-hover:text-gray-500 dark:text-gray-100"
+									}`}
+								/>
+								<span className="font-semibold text-gray-900 text-sm dark:text-gray-100">
+									{meme.likes}
+								</span>
+							</button>
 
-						<button
-							type="button"
-							onClick={() => setShowComments(true)}
-							className="group flex items-center gap-2"
-						>
-							<MessageCircle className="h-6 w-6 text-gray-900 group-hover:text-gray-500 dark:text-gray-100" />
-							<span className="font-semibold text-gray-900 text-sm dark:text-gray-100">
-								{meme.comments || 0}
-							</span>
-						</button>
+							<button
+								type="button"
+								onClick={() => setShowComments(true)}
+								className="group flex items-center gap-2"
+							>
+								<MessageCircle className="h-6 w-6 text-gray-900 group-hover:text-gray-500 dark:text-gray-100" />
+								<span className="font-semibold text-gray-900 text-sm dark:text-gray-100">
+									{meme.comments || 0}
+								</span>
+							</button>
 
-						<button
-							type="button"
-							onClick={handleShare}
-							className="group flex items-center gap-2"
-						>
-							<Share2 className="h-6 w-6 text-gray-900 group-hover:text-gray-500 dark:text-gray-100" />
-							<span className="font-semibold text-gray-900 text-sm dark:text-gray-100">
-								{meme.shares}
-							</span>
-						</button>
+							<button
+								type="button"
+								onClick={handleShare}
+								className="group flex items-center gap-2"
+							>
+								<Share2 className="h-6 w-6 text-gray-900 group-hover:text-gray-500 dark:text-gray-100" />
+								<span className="font-semibold text-gray-900 text-sm dark:text-gray-100">
+									{meme.shares}
+								</span>
+							</button>
+						</div>
+
+						{/* Report and Delete buttons */}
+						<div className="flex items-center gap-1">
+							{isOwnMeme && (
+								<Button
+									isIconOnly
+									size="sm"
+									variant="light"
+									onPress={() => setShowDeleteModal(true)}
+									aria-label="Delete this meme"
+									className="text-red-600 hover:text-red-700"
+								>
+									<Trash2 className="h-4 w-4" />
+								</Button>
+							)}
+							<Button
+								isIconOnly
+								size="sm"
+								variant="light"
+								onPress={() => setShowReportModal(true)}
+								aria-label="Report this content"
+							>
+								<Flag className="h-4 w-4" />
+							</Button>
+						</div>
 					</div>
 
 					{/* Tags */}
@@ -249,6 +248,21 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 				isOpen={showReportModal}
 				onClose={() => setShowReportModal(false)}
 			/>
+
+			<ShareModal
+				memeId={meme._id}
+				memeTitle={meme.title}
+				isOpen={showShareModal}
+				onClose={() => setShowShareModal(false)}
+			/>
+
+			{meme.authorId && (
+				<UserProfileModal
+					userId={meme.authorId}
+					isOpen={showUserProfile}
+					onClose={() => setShowUserProfile(false)}
+				/>
+			)}
 		</>
 	);
 }
