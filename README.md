@@ -151,6 +151,49 @@ npm run lint            # Run Biome linter
 npm run typecheck       # TypeScript type checking
 ```
 
+## Deployment
+
+### Netlify Deployment
+
+This project is configured for automatic deployment on Netlify with Convex backend.
+
+#### Setup Steps:
+
+1. **Connect your GitHub repository to Netlify**
+   - Go to [app.netlify.com](https://app.netlify.com)
+   - Click "Add new site" → "Import an existing project"
+   - Connect your GitHub account and select this repository
+
+2. **Configure Convex Deploy Key**
+   - Go to your [Convex Dashboard](https://dashboard.convex.dev)
+   - Navigate to your project's Settings page
+   - Click "Generate" to create a **Production** deploy key
+   - Copy the generated key
+   - In Netlify, go to Site configuration → Environment variables
+   - Add a new variable:
+     - Key: `CONVEX_DEPLOY_KEY`
+     - Value: (paste your production deploy key)
+
+3. **Deploy**
+   - Netlify will automatically detect the build settings from `netlify.toml`
+   - Click "Deploy site"
+   - Every push to `main` will trigger automatic deployment
+
+#### How it works:
+- The build command `bunx convex deploy --cmd 'bun run build'` deploys Convex functions first using Bun
+- Convex sets the `VITE_CONVEX_URL` environment variable automatically
+- Vite builds the frontend with the production Convex URL using Bun's fast runtime
+- The built site is published from the `dist` directory
+
+#### Optional: Preview Deployments
+To enable preview deployments for pull requests:
+1. Generate a **Preview** deploy key in Convex Dashboard
+2. In Netlify, edit the `CONVEX_DEPLOY_KEY` variable
+3. Select "Different value for each deploy context"
+4. Paste the preview key under "Deploy Previews"
+
+This creates isolated Convex backends for each PR preview.
+
 ## Features in Detail
 
 ### Authentication
