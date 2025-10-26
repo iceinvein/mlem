@@ -75,6 +75,7 @@ export function ShareModal({
 			url: `fb://facewebmodal/f?href=${encodedUrl}`,
 			fallbackUrl: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
 			color: "bg-blue-600 hover:bg-blue-700",
+			customHandler: undefined,
 		},
 		{
 			name: "Twitter",
@@ -82,6 +83,7 @@ export function ShareModal({
 			url: `twitter://post?message=${encodedTitle}%20${encodedUrl}`,
 			fallbackUrl: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`,
 			color: "bg-black hover:bg-gray-800",
+			customHandler: undefined,
 		},
 		{
 			name: "LinkedIn",
@@ -89,6 +91,7 @@ export function ShareModal({
 			url: `linkedin://shareArticle?url=${encodedUrl}`,
 			fallbackUrl: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
 			color: "bg-blue-700 hover:bg-blue-800",
+			customHandler: undefined,
 		},
 		{
 			name: "WhatsApp",
@@ -96,13 +99,36 @@ export function ShareModal({
 			url: `whatsapp://send?text=${encodedTitle}%20${encodedUrl}`,
 			fallbackUrl: `https://wa.me/?text=${encodedTitle}%20${encodedUrl}`,
 			color: "bg-green-600 hover:bg-green-700",
+			customHandler: undefined,
 		},
 		{
 			name: "Slack",
 			icon: SlackIcon,
-			url: `slack://share?text=${encodedTitle}%20${encodedUrl}`,
-			fallbackUrl: `https://slack.com/intl/en-us/help/articles/201330256-Add-links-to-your-messages`,
+			url: `slack://open`,
+			fallbackUrl: `https://slack.com/`,
 			color: "bg-purple-600 hover:bg-purple-700",
+			customHandler: () => {
+				// Try to open Slack desktop app
+				const slackUrl = "slack://open";
+				window.location.href = slackUrl;
+
+				// After a delay, copy the link and show instructions
+				setTimeout(() => {
+					navigator.clipboard
+						.writeText(`${memeTitle}\n${postUrl}`)
+						.then(() => {
+							toast.success(
+								"Link copied! Paste it in Slack to share",
+								{ duration: 4000 },
+							);
+						})
+						.catch(() => {
+							toast.info("Open Slack and share: " + postUrl, {
+								duration: 4000,
+							});
+						});
+				}, 500);
+			},
 		},
 		{
 			name: "Teams",
@@ -110,6 +136,32 @@ export function ShareModal({
 			url: `msteams://share?href=${encodedUrl}&msgText=${encodedTitle}`,
 			fallbackUrl: `https://teams.microsoft.com/share?href=${encodedUrl}&msgText=${encodedTitle}`,
 			color: "bg-indigo-600 hover:bg-indigo-700",
+			customHandler: () => {
+				// Try Teams deep link first (works on some platforms)
+				const teamsUrl = `msteams://share?href=${encodedUrl}&msgText=${encodedTitle}`;
+				window.location.href = teamsUrl;
+
+				// Fallback: Copy link and show instructions
+				setTimeout(() => {
+					navigator.clipboard
+						.writeText(`${memeTitle}\n${postUrl}`)
+						.then(() => {
+							toast.success(
+								"Link copied! Paste it in Teams to share",
+								{ duration: 4000 },
+							);
+						})
+						.catch(() => {
+							// If Teams deep link worked, this won't show
+							// If it didn't, open web version
+							window.open(
+								`https://teams.microsoft.com/share?href=${encodedUrl}&msgText=${encodedTitle}`,
+								"_blank",
+								"noopener,noreferrer,width=800,height=600",
+							);
+						});
+				}, 1000);
+			},
 		},
 		{
 			name: "Email",
@@ -117,20 +169,79 @@ export function ShareModal({
 			url: `mailto:?subject=${encodedTitle}&body=Check%20out%20this%20meme:%20${encodedUrl}`,
 			fallbackUrl: null,
 			color: "bg-gray-600 hover:bg-gray-700",
+			customHandler: undefined,
 		},
 	];
 
 	const handleShare = (url: string, fallbackUrl: string | null) => {
-		// Try to open the app-specific URL scheme
-		const iframe = document.createElement("iframe");
-		iframe.style.display = "none";
-		iframe.src = url;
-		document.body.appendChild(iframe);
+		// For mailto, just open directly
+		if (url.startsWith("mailto:")) {
+			window.location.href = url;
+			return;
+		}
 
-		// Set a timeout to check if the app opened
-		const timeout = setTimeout(() => {
-			// If we're still here after 1 second, the app didn't open
-			// Fall back to web URL
+		// Detect platform
+		const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+		const isDesktopApp =
+			url.startsWith("slack://") || url.startsWith("msteams://");
+
+		// For desktop apps (Slack, Teams), try to open the desktop app
+		if (!isMobile && isDesktopApp) {
+			let appOpened = false;
+
+			const handleBlur = () => {
+				appOpened = true;
+			};
+
+			window.addEventListener("blur", handleBlur, { once: true });
+
+			// Try to open the desktop app
+			window.location.href = url;
+
+			// Check after a delay if the app opened
+			setTimeout(() => {
+				window.removeEventListener("blur", handleBlur);
+
+				// If app didn't open and we have a fallback, use it
+				if (!appOpened && fallbackUrl) {
+					window.open(
+						fallbackUrl,
+						"_blank",
+						"noopener,noreferrer,width=800,height=600",
+					);
+				}
+			}, 1500);
+			return;
+		}
+
+		if (isMobile) {
+			// Mobile: Try app first, then fallback
+			let appOpened = false;
+
+			const handleBlur = () => {
+				appOpened = true;
+			};
+
+			window.addEventListener("blur", handleBlur, { once: true });
+
+			// Try to open the app
+			window.location.href = url;
+
+			// Check after a delay if the app opened
+			setTimeout(() => {
+				window.removeEventListener("blur", handleBlur);
+
+				// If app didn't open and we have a fallback, use it
+				if (!appOpened && fallbackUrl) {
+					window.open(
+						fallbackUrl,
+						"_blank",
+						"noopener,noreferrer,width=600,height=600",
+					);
+				}
+			}, 1500);
+		} else {
+			// Desktop: For social media, just open the web version directly
 			if (fallbackUrl) {
 				window.open(
 					fallbackUrl,
@@ -138,28 +249,6 @@ export function ShareModal({
 					"noopener,noreferrer,width=600,height=600",
 				);
 			}
-			document.body.removeChild(iframe);
-		}, 1000);
-
-		// Clean up if the app did open (page will blur)
-		const handleBlur = () => {
-			clearTimeout(timeout);
-			setTimeout(() => {
-				if (document.body.contains(iframe)) {
-					document.body.removeChild(iframe);
-				}
-			}, 100);
-			window.removeEventListener("blur", handleBlur);
-		};
-
-		window.addEventListener("blur", handleBlur);
-
-		// For mailto, just open directly
-		if (url.startsWith("mailto:")) {
-			clearTimeout(timeout);
-			document.body.removeChild(iframe);
-			window.removeEventListener("blur", handleBlur);
-			window.location.href = url;
 		}
 	};
 
@@ -212,11 +301,10 @@ export function ShareModal({
 								isIconOnly
 								size="sm"
 								onPress={handleCopyLink}
-								className={`ml-2 shrink-0 transition-all ${
-									copied
-										? "bg-green-600 text-white"
-										: "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
-								}`}
+								className={`ml-2 shrink-0 transition-all ${copied
+									? "bg-green-600 text-white"
+									: "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
+									}`}
 								radius="full"
 							>
 								{copied ? (
@@ -238,10 +326,25 @@ export function ShareModal({
 								key={option.name}
 								fullWidth
 								size="lg"
-								onPress={() => handleShare(option.url, option.fallbackUrl)}
+								onPress={() => {
+									if (option.customHandler) {
+										option.customHandler();
+									} else {
+										handleShare(option.url, option.fallbackUrl);
+									}
+								}}
 								className={`${option.color} font-semibold text-white transition-all`}
 								radius="full"
-								startContent={<option.icon className="h-5 w-5" />}
+								startContent={
+									<span className="flex h-5 w-5 items-center justify-center">
+										{typeof option.icon === "function" &&
+											option.icon.name ? (
+											<option.icon />
+										) : (
+											<option.icon className="h-5 w-5" />
+										)}
+									</span>
+								}
 							>
 								Share on {option.name}
 							</Button>

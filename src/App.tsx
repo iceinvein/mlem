@@ -195,7 +195,7 @@ function Content() {
 							repeat: Number.POSITIVE_INFINITY,
 							ease: "linear",
 						}}
-						className="bg-[length:200%_auto] bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text font-black text-3xl text-transparent"
+						className="bg-linear-to-r bg-size-[200%_auto] from-purple-600 via-pink-600 to-orange-600 bg-clip-text font-black text-3xl text-transparent"
 					>
 						MLEM
 					</motion.h2>
@@ -259,7 +259,7 @@ function Content() {
 			</Unauthenticated>
 
 			<Authenticated>
-				<div className="relative">
+				<div className="relative h-[calc(100vh-14rem)]">
 					{currentMemeId ? (
 						<SinglePost
 							memeId={currentMemeId as Id<"memes">}

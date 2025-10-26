@@ -88,7 +88,7 @@ export function Settings() {
 	const isLoadingData = !categories || !loggedInUser;
 
 	return (
-		<div className="mx-auto max-w-[600px] animate-fade-in px-4 py-6">
+		<div className="mx-auto max-w-[600px] animate-fade-in px-4 pt-6 pb-24">
 			<h2 className="mb-6 font-black text-3xl text-gray-900 dark:text-white">
 				Settings
 			</h2>
@@ -337,7 +337,7 @@ export function Settings() {
 				</>
 			)}
 
-			<div className="mb-6 rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-900">
+			<div className="my-6 rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-900">
 				<h3 className="mb-4 font-bold text-base text-gray-900 dark:text-gray-100">
 					Appearance
 				</h3>
