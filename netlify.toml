@@ -3,7 +3,7 @@ command = "bunx convex deploy --cmd 'bun run build'"
 publish = "dist"
 
 [build.environment]
-NODE_VERSION = "20"
+NODE_VERSION = "22"
 
 [[redirects]]
 from = "/*"
