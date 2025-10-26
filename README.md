@@ -1,29 +1,215 @@
-# Mobile-First Meme Sharing Site
-  
-This is a project built with [Chef](https://chef.convex.dev) using [Convex](https://convex.dev) as its backend.
- You can find docs about Chef with useful information like how to deploy to production [here](https://docs.convex.dev/chef).
-  
-This project is connected to the Convex deployment named [`friendly-peacock-80`](https://dashboard.convex.dev/d/friendly-peacock-80).
-  
-## Project structure
-  
-The frontend code is in the `app` directory and is built with [Vite](https://vitejs.dev/).
-  
-The backend code is in the `convex` directory.
-  
-`npm run dev` will start the frontend and backend servers.
+# MLEM 🎭
 
-## App authentication
+A modern, real-time meme sharing platform built with React, Convex, and TypeScript. Discover, share, and enjoy the funniest memes with a vibrant community.
 
-Chef apps use [Convex Auth](https://auth.convex.dev/) with Anonymous auth for easy sign in. You may wish to change this before deploying your app.
+## Features
 
-## Developing and deploying your app
+### Core Functionality
+- **Real-time Feed** - Browse memes with infinite scroll and virtual rendering for optimal performance
+- **Category System** - Organize memes into categories (Funny, Animals, Gaming, Tech, Sports, Movies, Food, Travel)
+- **User Interactions** - Like, share, and comment on memes
+- **Personalized Experience** - Customize your feed with favorite categories and sorting preferences
+- **Dark Mode** - Full theme support (Light, Dark, System)
 
-Check out the [Convex docs](https://docs.convex.dev/) for more information on how to develop with Convex.
-* If you're new to Convex, the [Overview](https://docs.convex.dev/understanding/) is a good place to start
-* Check out the [Hosting and Deployment](https://docs.convex.dev/production/) docs for how to deploy your app
-* Read the [Best Practices](https://docs.convex.dev/understanding/best-practices/) guide for tips on how to improve you app further
+### User Features
+- **Authentication** - Secure sign-in with Convex Auth
+- **Custom Usernames** - One-time username change capability
+- **Feed Customization** - Sort by newest or most popular, filter by categories
+- **Rate Limiting** - Fair usage with 5 posts per hour for regular users
+- **Responsive Design** - Mobile-first UI with smooth animations
 
-## HTTP API
+### Content Management
+- **Create Memes** - Upload images with titles, categories, and tags
+- **File Storage** - Integrated Convex file storage for images
+- **Delete Memes** - Authors can delete their own content
+- **Share Functionality** - Share memes with unique URLs
 
-User-defined http routes are defined in the `convex/router.ts` file. We split these routes into a separate file from `convex/http.ts` to allow us to prevent the LLM from modifying the authentication routes.
+### Moderation & Administration
+- **Role System** - User, Moderator, and Admin roles
+- **Moderation Dashboard** - Review and manage reported content
+- **Report System** - Users can report inappropriate content with multiple reason categories
+- **Admin Panel** - Manage users, roles, and system-wide settings
+- **Category Management** - Admins can create, update, and delete categories
+
+## Tech Stack
+
+### Frontend
+- **React 19** - Latest React with modern hooks
+- **TypeScript** - Type-safe development
+- **Vite** - Fast build tool and dev server
+- **Tailwind CSS 4** - Utility-first styling
+- **HeroUI** - Beautiful component library
+- **Framer Motion** - Smooth animations
+- **Lucide React** - Icon library
+- **TanStack Virtual** - Efficient list virtualization
+- **Next Themes** - Theme management
+
+### Backend
+- **Convex** - Real-time backend platform
+- **Convex Auth** - Authentication system
+- **File Storage** - Built-in file management
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+ or Bun
+- Convex account (free at [convex.dev](https://convex.dev))
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd mlem
+```
+
+2. Install dependencies:
+```bash
+npm install
+# or
+bun install
+```
+
+3. Set up environment variables:
+Create a `.env.local` file in the root directory:
+```env
+VITE_CONVEX_URL=your_convex_deployment_url
+```
+
+4. Initialize Convex:
+```bash
+npx convex dev
+```
+
+5. Start the development server:
+```bash
+npm run dev
+# or
+bun run dev
+```
+
+The app will open at `http://localhost:5173`
+
+## Project Structure
+
+```
+├── convex/                 # Backend functions and schema
+│   ├── auth.config.ts     # Authentication configuration
+│   ├── auth.ts            # Auth functions
+│   ├── comments.ts        # Comment management
+│   ├── memes.ts           # Meme CRUD operations
+│   ├── reports.ts         # Content reporting
+│   ├── roles.ts           # User role management
+│   ├── schema.ts          # Database schema
+│   └── users.ts           # User management
+├── src/
+│   ├── components/        # React components
+│   │   ├── AdminDashboard.tsx
+│   │   ├── BottomNav.tsx
+│   │   ├── CategoryManagement.tsx
+│   │   ├── CreateMemeModal.tsx
+│   │   ├── Feed.tsx
+│   │   ├── MemeCard.tsx
+│   │   ├── ModerationDashboard.tsx
+│   │   ├── Settings.tsx
+│   │   ├── ShareModal.tsx
+│   │   └── SinglePost.tsx
+│   ├── providers/         # Context providers
+│   ├── App.tsx           # Main app component
+│   ├── main.tsx          # App entry point
+│   └── style.css         # Global styles
+├── public/               # Static assets
+└── package.json
+```
+
+## Database Schema
+
+### Tables
+- **users** - User accounts with authentication
+- **categories** - Meme categories
+- **memes** - Meme posts with metadata
+- **comments** - Nested comments on memes
+- **userPreferences** - User feed settings
+- **userInteractions** - Likes and shares
+- **reports** - Content moderation reports
+- **userRoles** - Role-based access control
+- **userMetadata** - Additional user data
+
+## Scripts
+
+```bash
+# Development
+npm run dev              # Start frontend and backend
+npm run dev:frontend     # Start Vite dev server only
+npm run dev:backend      # Start Convex dev only
+
+# Build
+npm run build           # Build for production
+
+# Code Quality
+npm run lint            # Run Biome linter
+npm run typecheck       # TypeScript type checking
+```
+
+## Features in Detail
+
+### Authentication
+- Email-based authentication via Convex Auth
+- Automatic username generation on first sign-in
+- One-time username customization
+
+### Feed System
+- Infinite scroll with pagination
+- Virtual rendering for performance
+- Real-time updates
+- Sort by newest or most popular
+- Filter by categories
+- Show only favorite categories option
+
+### Moderation
+- User-submitted reports with categories:
+  - Spam
+  - Inappropriate content
+  - Harassment
+  - Copyright violation
+  - Misinformation
+  - Other
+- Moderator dashboard for reviewing reports
+- Actions: Warning, Content removal, User suspension
+- Report status tracking
+
+### Admin Features
+- First user can claim admin role
+- Promote users to moderator/admin
+- Category management (CRUD operations)
+- View all users and their roles
+- System-wide content oversight
+
+## Rate Limiting
+- Regular users: 5 memes per hour
+- Moderators/Admins: Unlimited posts
+- Automatic reset after 1 hour
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is open source and available under the MIT License.
+
+## Acknowledgments
+
+- Built with [Convex](https://convex.dev)
+- UI components from [HeroUI](https://heroui.com)
+- Icons from [Lucide](https://lucide.dev)
+
+---
+
+Made with ❤️ by the MLEM team
