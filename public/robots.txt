@@ -1,0 +1,11 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Disallow admin and settings pages
+Disallow: /admin
+Disallow: /settings
+Disallow: /moderation
+
+# Sitemap
+Sitemap: https://mlem.netlify.app/sitemap.xml
