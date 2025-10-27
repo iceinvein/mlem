@@ -4,6 +4,7 @@ import { MessageCircle, Send, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { SignInPromptModal } from "./SignInPromptModal";
 
 interface CommentSectionProps {
 	memeId: Id<"memes">;
@@ -13,6 +14,7 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 	const [newComment, setNewComment] = useState("");
 	const [replyTo, setReplyTo] = useState<Id<"comments"> | null>(null);
 	const [replyContent, setReplyContent] = useState("");
+	const [showSignInPrompt, setShowSignInPrompt] = useState(false);
 
 	const comments = useQuery(api.comments.getComments, { memeId });
 	const addComment = useMutation(api.comments.addComment);
@@ -20,6 +22,10 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 	const loggedInUser = useQuery(api.auth.loggedInUser);
 
 	const handleAddComment = async () => {
+		if (!loggedInUser) {
+			setShowSignInPrompt(true);
+			return;
+		}
 		if (!newComment.trim()) return;
 
 		try {
@@ -151,7 +157,13 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 									</p>
 									<button
 										type="button"
-										onClick={() => setReplyTo(comment._id)}
+										onClick={() => {
+											if (!loggedInUser) {
+												setShowSignInPrompt(true);
+												return;
+											}
+											setReplyTo(comment._id);
+										}}
 										className="font-semibold text-gray-500 text-xs hover:text-gray-700 dark:hover:text-gray-300"
 									>
 										Reply
@@ -275,6 +287,12 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 					<p className="text-gray-500 text-sm">Be the first to comment!</p>
 				</div>
 			)}
+
+			<SignInPromptModal
+				isOpen={showSignInPrompt}
+				onClose={() => setShowSignInPrompt(false)}
+				action="comment on this post"
+			/>
 		</div>
 	);
 }

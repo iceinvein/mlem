@@ -61,7 +61,7 @@ export function SinglePost({ memeId, onBack }: SinglePostProps) {
 
 			{/* Post Card */}
 			<div className="border-gray-200 border-b dark:border-gray-800">
-				<MemeCard meme={meme} />
+				<MemeCard meme={meme} hideCommentModal />
 			</div>
 
 			{/* Comments Section */}

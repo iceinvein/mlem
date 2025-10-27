@@ -39,9 +39,10 @@ interface MemeCardProps {
 			email?: string;
 		} | null;
 	};
+	hideCommentModal?: boolean;
 }
 
-function MemeCardComponent({ meme }: MemeCardProps) {
+function MemeCardComponent({ meme, hideCommentModal = false }: MemeCardProps) {
 	const [showComments, setShowComments] = useState(false);
 	const [showReportModal, setShowReportModal] = useState(false);
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -92,6 +93,10 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 	);
 
 	const handleComment = () => {
+		if (hideCommentModal) {
+			// In single post view, just show the count - comments are already visible below
+			return;
+		}
 		if (!viewer) {
 			setSignInAction("comment on this meme");
 			setShowSignInPrompt(true);
