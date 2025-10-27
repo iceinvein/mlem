@@ -1,10 +1,11 @@
 import { Password } from "@convex-dev/auth/providers/Password";
+import Google from "@auth/core/providers/google";
 import { convexAuth, getAuthUserId } from "@convex-dev/auth/server";
 import { query } from "./_generated/server";
 import { generateUsername } from "./usernameGenerator";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-	providers: [Password],
+	providers: [Password, Google],
 	callbacks: {
 		async afterUserCreatedOrUpdated(ctx, { existingUserId, userId }) {
 			// Only generate username for new users

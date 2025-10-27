@@ -13,6 +13,7 @@
     "typecheck": "tsc -b -noEmit --pretty false"
   },
   "dependencies": {
+    "@auth/core": "^0.37.0",
     "@convex-dev/auth": "^0.0.90",
     "@heroui/avatar": "^2.2.22",
     "@heroui/button": "^2.2.27",
