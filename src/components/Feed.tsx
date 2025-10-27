@@ -15,6 +15,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { CreateMemeModal } from "./CreateMemeModal";
 import { MemeCard } from "./MemeCard";
 import { MemeCardSkeleton } from "./MemeCardSkeleton";
+import { SignInPromptModal } from "./SignInPromptModal";
 
 export function Feed() {
 	const [sortBy, setSortBy] = useState<"newest" | "popular">("newest");
@@ -22,10 +23,12 @@ export function Feed() {
 		useState<Id<"categories"> | null>(null);
 	const [showCreateModal, setShowCreateModal] = useState(false);
 	const [showSortModal, setShowSortModal] = useState(false);
+	const [showSignInPrompt, setShowSignInPrompt] = useState(false);
 	const parentRef = useRef<HTMLDivElement>(null);
 
 	const categories = useQuery(api.memes.getCategories);
 	const userPreferences = useQuery(api.memes.getUserPreferences);
+	const viewer = useQuery(api.auth.loggedInUser);
 	const seedCategories = useMutation(api.memes.seedCategories);
 
 	const { results, status, loadMore } = usePaginatedQuery(
@@ -50,7 +53,7 @@ export function Feed() {
 	}, [userPreferences]);
 
 	const filteredMemes = results?.filter((meme) => {
-		if (!userPreferences?.feedSettings.showOnlyFavorites) return true;
+		if (!userPreferences?.feedSettings?.showOnlyFavorites) return true;
 		return userPreferences.favoriteCategories.includes(meme.categoryId);
 	});
 
@@ -96,7 +99,13 @@ export function Feed() {
 							<SlidersHorizontal className="h-4 w-4" />
 						</Button>
 						<Button
-							onPress={() => setShowCreateModal(true)}
+							onPress={() => {
+								if (!viewer) {
+									setShowSignInPrompt(true);
+									return;
+								}
+								setShowCreateModal(true);
+							}}
 							className="bg-gray-900 font-bold text-white dark:bg-gray-100 dark:text-gray-900"
 							size="sm"
 							radius="full"
@@ -209,6 +218,12 @@ export function Feed() {
 			<CreateMemeModal
 				isOpen={showCreateModal}
 				onClose={() => setShowCreateModal(false)}
+			/>
+
+			<SignInPromptModal
+				isOpen={showSignInPrompt}
+				onClose={() => setShowSignInPrompt(false)}
+				action="create a meme"
 			/>
 
 			{/* Sort Modal */}

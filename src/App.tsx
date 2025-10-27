@@ -1,4 +1,4 @@
-import { Authenticated, Unauthenticated, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
@@ -11,7 +11,6 @@ import { Feed } from "./components/Feed";
 import { ModerationDashboard } from "./components/ModerationDashboard";
 import { Settings } from "./components/Settings";
 import { SinglePost } from "./components/SinglePost";
-import { SignInForm } from "./SignInForm";
 
 export default function App() {
 	const [showNav, setShowNav] = useState(false);
@@ -103,6 +102,13 @@ function Content() {
 		return () => window.removeEventListener("hashchange", handleHashChange);
 	}, []);
 
+	// Reset to feed if user signs out
+	useEffect(() => {
+		if (!loggedInUser && activeTab !== "feed") {
+			setActiveTab("feed");
+		}
+	}, [loggedInUser, activeTab]);
+
 	// Reset to feed if user loses moderation access
 	if (activeTab === "moderation" && isModerator === false) {
 		setActiveTab("feed");
@@ -124,15 +130,15 @@ function Content() {
 		return () => clearTimeout(timer);
 	}, []);
 
-	// Hide splash when both conditions are met
+	// Hide splash when minimum loading is complete
 	useEffect(() => {
-		if (minLoadingComplete && loggedInUser !== undefined) {
+		if (minLoadingComplete) {
 			const timer = setTimeout(() => {
 				setShowSplash(false);
 			}, 300);
 			return () => clearTimeout(timer);
 		}
-	}, [minLoadingComplete, loggedInUser]);
+	}, [minLoadingComplete]);
 
 	if (showSplash) {
 		return (
@@ -229,58 +235,30 @@ function Content() {
 	}
 
 	return (
-		<>
-			<Unauthenticated>
-				<div className="flex min-h-[calc(100vh-14rem)] animate-fade-in flex-col items-center justify-center px-4">
-					<div className="mb-8 space-y-4 text-center">
-						<div className="mb-4 flex animate-bounce-slow justify-center">
-							<img
-								src="/logo.png"
-								alt="MLEM"
-								className="h-20 w-20 object-contain dark:hidden"
-							/>
-							<img
-								src="/logo-negative.png"
-								alt="MLEM"
-								className="hidden h-20 w-20 object-contain dark:block"
-							/>
-						</div>
-						<h1 className="font-black text-5xl text-gray-900 dark:text-white">
-							MLEM
-						</h1>
-						<p className="max-w-md text-gray-600 text-lg dark:text-gray-400">
-							Discover and share the funniest memes
-						</p>
-					</div>
-					<div className="w-full max-w-md">
-						<SignInForm />
-					</div>
-				</div>
-			</Unauthenticated>
-
-			<Authenticated>
-				<div className="relative h-[calc(100vh-14rem)]">
-					{currentMemeId ? (
-						<SinglePost
-							memeId={currentMemeId as Id<"memes">}
-							onBack={() => {
-								window.location.hash = "";
-								setCurrentMemeId(null);
-							}}
-						/>
-					) : (
-						<>
-							{activeTab === "feed" && <Feed />}
-							{activeTab === "moderation" && <ModerationDashboard />}
-							{activeTab === "categories" && <CategoryManagement />}
-							{activeTab === "admin" && <AdminDashboard />}
-							{activeTab === "settings" && <Settings />}
-
-							<BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
-						</>
+		<div className="relative h-[calc(100vh-14rem)]">
+			{currentMemeId ? (
+				<SinglePost
+					memeId={currentMemeId as Id<"memes">}
+					onBack={() => {
+						window.location.hash = "";
+						setCurrentMemeId(null);
+					}}
+				/>
+			) : (
+				<>
+					{activeTab === "feed" && <Feed />}
+					{activeTab === "moderation" && loggedInUser && (
+						<ModerationDashboard />
 					)}
-				</div>
-			</Authenticated>
-		</>
+					{activeTab === "categories" && loggedInUser && <CategoryManagement />}
+					{activeTab === "admin" && loggedInUser && <AdminDashboard />}
+					{activeTab === "settings" && loggedInUser && <Settings />}
+
+					{loggedInUser && (
+						<BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+					)}
+				</>
+			)}
+		</div>
 	);
 }

@@ -15,6 +15,7 @@ import { CommentModal } from "./CommentModal";
 import { DeleteMemeModal } from "./DeleteMemeModal";
 import { ReportModal } from "./ReportModal";
 import { ShareModal } from "./ShareModal";
+import { SignInPromptModal } from "./SignInPromptModal";
 import { UserProfileModal } from "./UserProfileModal";
 
 interface MemeCardProps {
@@ -46,6 +47,8 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
 	const [showShareModal, setShowShareModal] = useState(false);
 	const [showUserProfile, setShowUserProfile] = useState(false);
+	const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+	const [signInAction, setSignInAction] = useState("");
 	const [imageError, setImageError] = useState(false);
 	const toggleLike = useMutation(api.memes.toggleLike);
 	const shareMeme = useMutation(api.memes.shareMeme);
@@ -57,17 +60,27 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 	// Memoize handlers to prevent re-creating them on every render
 	const handleLike = useMemo(
 		() => async () => {
+			if (!viewer) {
+				setSignInAction("like this meme");
+				setShowSignInPrompt(true);
+				return;
+			}
 			try {
 				await toggleLike({ memeId: meme._id });
 			} catch {
 				// Silent fail for seamless experience
 			}
 		},
-		[toggleLike, meme._id],
+		[toggleLike, meme._id, viewer],
 	);
 
 	const handleShare = useMemo(
 		() => async () => {
+			if (!viewer) {
+				setSignInAction("share this meme");
+				setShowSignInPrompt(true);
+				return;
+			}
 			try {
 				await shareMeme({ memeId: meme._id });
 				setShowShareModal(true);
@@ -75,8 +88,26 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 				// Silent fail for seamless experience
 			}
 		},
-		[shareMeme, meme._id],
+		[shareMeme, meme._id, viewer],
 	);
+
+	const handleComment = () => {
+		if (!viewer) {
+			setSignInAction("comment on this meme");
+			setShowSignInPrompt(true);
+			return;
+		}
+		setShowComments(true);
+	};
+
+	const handleReport = () => {
+		if (!viewer) {
+			setSignInAction("report this meme");
+			setShowSignInPrompt(true);
+			return;
+		}
+		setShowReportModal(true);
+	};
 
 	const isOwnMeme = viewer && meme.authorId === viewer._id;
 
@@ -152,11 +183,10 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 								className="group flex items-center gap-2"
 							>
 								<Heart
-									className={`h-6 w-6 transition-all ${
-										meme.userLiked
+									className={`h-6 w-6 transition-all ${meme.userLiked
 											? "scale-110 fill-red-500 text-red-500"
 											: "text-gray-900 group-hover:text-gray-500 dark:text-gray-100"
-									}`}
+										}`}
 								/>
 								<span className="font-semibold text-gray-900 text-sm dark:text-gray-100">
 									{meme.likes}
@@ -165,7 +195,7 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 
 							<button
 								type="button"
-								onClick={() => setShowComments(true)}
+								onClick={handleComment}
 								className="group flex items-center gap-2"
 							>
 								<MessageCircle className="h-6 w-6 text-gray-900 group-hover:text-gray-500 dark:text-gray-100" />
@@ -204,7 +234,7 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 								isIconOnly
 								size="sm"
 								variant="light"
-								onPress={() => setShowReportModal(true)}
+								onPress={handleReport}
 								aria-label="Report this content"
 							>
 								<Flag className="h-4 w-4" />
@@ -263,6 +293,12 @@ function MemeCardComponent({ meme }: MemeCardProps) {
 					onClose={() => setShowUserProfile(false)}
 				/>
 			)}
+
+			<SignInPromptModal
+				isOpen={showSignInPrompt}
+				onClose={() => setShowSignInPrompt(false)}
+				action={signInAction}
+			/>
 		</>
 	);
 }
