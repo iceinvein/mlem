@@ -25,6 +25,7 @@ export function Settings() {
 	const loggedInUser = useQuery(api.auth.loggedInUser);
 	const currentUser = useQuery(api.users.getCurrentUser);
 	const isAdmin = useQuery(api.roles.checkIsAdmin);
+	const hasAnyAdmin = useQuery(api.roles.hasAnyAdmin);
 	const initializeFirstAdmin = useMutation(api.roles.initializeFirstAdmin);
 	const updateUsername = useMutation(api.users.updateUsername);
 	const { signOut } = useAuthActions();
@@ -196,7 +197,7 @@ export function Settings() {
 				</div>
 			)}
 
-			{!isLoadingData && isAdmin === false && (
+			{!isLoadingData && isAdmin === false && hasAnyAdmin === false && (
 				<Card className="mb-6 border-warning bg-warning-50 dark:bg-warning-50/10">
 					<CardHeader>
 						<h3 className="font-semibold text-warning-700 dark:text-warning-500">

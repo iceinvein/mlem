@@ -47,6 +47,19 @@ export const checkIsModerator = query({
 	},
 });
 
+export const hasAnyAdmin = query({
+	args: {},
+	returns: v.boolean(),
+	handler: async (ctx) => {
+		const existingAdmin = await ctx.db
+			.query("userRoles")
+			.withIndex("by_role", (q) => q.eq("role", "admin"))
+			.first();
+
+		return existingAdmin !== null;
+	},
+});
+
 export const getAllUsers = query({
 	args: {},
 	handler: async (ctx) => {
