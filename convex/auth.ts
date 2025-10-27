@@ -1,11 +1,27 @@
-import { Password } from "@convex-dev/auth/providers/Password";
+import Apple from "@auth/core/providers/apple";
 import Google from "@auth/core/providers/google";
+import { Password } from "@convex-dev/auth/providers/Password";
 import { convexAuth, getAuthUserId } from "@convex-dev/auth/server";
 import { query } from "./_generated/server";
 import { generateUsername } from "./usernameGenerator";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-	providers: [Password, Google],
+	providers: [
+		Password,
+		Google,
+		Apple({
+			profile: (appleInfo) => {
+				const name = appleInfo.user
+					? `${appleInfo.user.name.firstName} ${appleInfo.user.name.lastName}`
+					: undefined;
+				return {
+					id: appleInfo.sub,
+					name: name,
+					email: appleInfo.email,
+				};
+			},
+		}),
+	],
 	callbacks: {
 		async afterUserCreatedOrUpdated(ctx, { existingUserId, userId }) {
 			// Only generate username for new users

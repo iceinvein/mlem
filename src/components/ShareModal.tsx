@@ -117,13 +117,12 @@ export function ShareModal({
 					navigator.clipboard
 						.writeText(`${memeTitle}\n${postUrl}`)
 						.then(() => {
-							toast.success(
-								"Link copied! Paste it in Slack to share",
-								{ duration: 4000 },
-							);
+							toast.success("Link copied! Paste it in Slack to share", {
+								duration: 4000,
+							});
 						})
 						.catch(() => {
-							toast.info("Open Slack and share: " + postUrl, {
+							toast.info(`Open Slack and share: ${postUrl}`, {
 								duration: 4000,
 							});
 						});
@@ -146,10 +145,9 @@ export function ShareModal({
 					navigator.clipboard
 						.writeText(`${memeTitle}\n${postUrl}`)
 						.then(() => {
-							toast.success(
-								"Link copied! Paste it in Teams to share",
-								{ duration: 4000 },
-							);
+							toast.success("Link copied! Paste it in Teams to share", {
+								duration: 4000,
+							});
 						})
 						.catch(() => {
 							// If Teams deep link worked, this won't show
@@ -301,10 +299,11 @@ export function ShareModal({
 								isIconOnly
 								size="sm"
 								onPress={handleCopyLink}
-								className={`ml-2 shrink-0 transition-all ${copied
-									? "bg-green-600 text-white"
-									: "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
-									}`}
+								className={`ml-2 shrink-0 transition-all ${
+									copied
+										? "bg-green-600 text-white"
+										: "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
+								}`}
 								radius="full"
 							>
 								{copied ? (
@@ -337,8 +336,7 @@ export function ShareModal({
 								radius="full"
 								startContent={
 									<span className="flex h-5 w-5 items-center justify-center">
-										{typeof option.icon === "function" &&
-											option.icon.name ? (
+										{typeof option.icon === "function" && option.icon.name ? (
 											<option.icon />
 										) : (
 											<option.icon className="h-5 w-5" />

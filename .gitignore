@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 
 .kiro
+
+*.p8
+generate-apple-secret.js
+generate-keys.js
