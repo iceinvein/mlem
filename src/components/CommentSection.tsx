@@ -1,7 +1,23 @@
-import { Avatar, Button, Textarea } from "@heroui/react";
+import {
+	Avatar,
+	Button,
+	Dropdown,
+	DropdownItem,
+	DropdownMenu,
+	DropdownTrigger,
+	Modal,
+	ModalBody,
+	ModalContent,
+	ModalFooter,
+	ModalHeader,
+	Select,
+	SelectItem,
+	Textarea,
+} from "@heroui/react";
 import { useMutation, useQuery } from "convex/react";
-import { MessageCircle, Send, Trash2 } from "lucide-react";
+import { Flag, MessageCircle, MoreVertical, Send, Trash2, VolumeX } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { SignInPromptModal } from "./SignInPromptModal";
@@ -15,11 +31,18 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 	const [replyTo, setReplyTo] = useState<Id<"comments"> | null>(null);
 	const [replyContent, setReplyContent] = useState("");
 	const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+	const [reportUserId, setReportUserId] = useState<Id<"users"> | null>(null);
+	const [reportReason, setReportReason] = useState<
+		"spam" | "harassment" | "inappropriate_content" | "impersonation" | "other"
+	>("spam");
+	const [reportDescription, setReportDescription] = useState("");
 
 	const comments = useQuery(api.comments.getComments, { memeId });
 	const addComment = useMutation(api.comments.addComment);
 	const deleteComment = useMutation(api.comments.deleteComment);
 	const loggedInUser = useQuery(api.auth.loggedInUser);
+	const reportUser = useMutation(api.userReports.reportUser);
+	const muteUser = useMutation(api.userReports.muteUser);
 
 	const handleAddComment = async () => {
 		if (!loggedInUser) {
@@ -63,6 +86,35 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 		}
 	};
 
+	const handleReportUser = async () => {
+		if (!reportUserId) return;
+		try {
+			await reportUser({
+				reportedUserId: reportUserId,
+				reason: reportReason,
+				description: reportDescription || undefined,
+			});
+			toast.success("User reported successfully");
+			setReportUserId(null);
+			setReportDescription("");
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Failed to report user",
+			);
+		}
+	};
+
+	const handleMuteUser = async (userId: Id<"users">) => {
+		try {
+			await muteUser({ mutedUserId: userId });
+			toast.success("User muted successfully");
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Failed to mute user",
+			);
+		}
+	};
+
 	return (
 		<div className="bg-gray-50 dark:bg-gray-950">
 			{/* Comments Header */}
@@ -97,11 +149,10 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 					</div>
 					<Button
 						isIconOnly
-						className={`shrink-0 transition-all ${
-							newComment.trim()
-								? "scale-100 bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-								: "scale-95 bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600"
-						}`}
+						className={`shrink-0 transition-all ${newComment.trim()
+							? "scale-100 bg-gray-900 text-white dark:bg-white dark:text-gray-900"
+							: "scale-95 bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600"
+							}`}
 						onPress={handleAddComment}
 						isDisabled={!newComment.trim()}
 						radius="full"
@@ -140,17 +191,50 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 												{new Date(comment._creationTime).toLocaleDateString()}
 											</span>
 										</div>
-										{loggedInUser?._id === comment.authorId && (
-											<Button
-												isIconOnly
-												size="sm"
-												variant="light"
-												onPress={() => handleDeleteComment(comment._id)}
-												className="shrink-0"
-											>
-												<Trash2 className="h-4 w-4 text-red-500" />
-											</Button>
-										)}
+										<div className="flex gap-1">
+											{loggedInUser?._id === comment.authorId ? (
+												<Button
+													isIconOnly
+													size="sm"
+													variant="light"
+													onPress={() => handleDeleteComment(comment._id)}
+													className="shrink-0"
+												>
+													<Trash2 className="h-4 w-4 text-red-500" />
+												</Button>
+											) : (
+												loggedInUser && (
+													<Dropdown>
+														<DropdownTrigger>
+															<Button
+																isIconOnly
+																size="sm"
+																variant="light"
+																className="shrink-0"
+															>
+																<MoreVertical className="h-4 w-4" />
+															</Button>
+														</DropdownTrigger>
+														<DropdownMenu>
+															<DropdownItem
+																key="report"
+																startContent={<Flag className="h-4 w-4" />}
+																onPress={() => setReportUserId(comment.authorId)}
+															>
+																Report User
+															</DropdownItem>
+															<DropdownItem
+																key="mute"
+																startContent={<VolumeX className="h-4 w-4" />}
+																onPress={() => handleMuteUser(comment.authorId)}
+															>
+																Mute User
+															</DropdownItem>
+														</DropdownMenu>
+													</Dropdown>
+												)
+											)}
+										</div>
 									</div>
 									<p className="mb-2 text-gray-900 text-sm leading-relaxed dark:text-gray-100">
 										{comment.content}
@@ -199,17 +283,52 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 															).toLocaleDateString()}
 														</span>
 													</div>
-													{loggedInUser?._id === reply.authorId && (
-														<Button
-															isIconOnly
-															size="sm"
-															variant="light"
-															onPress={() => handleDeleteComment(reply._id)}
-															className="shrink-0"
-														>
-															<Trash2 className="h-3 w-3 text-red-500" />
-														</Button>
-													)}
+													<div className="flex gap-1">
+														{loggedInUser?._id === reply.authorId ? (
+															<Button
+																isIconOnly
+																size="sm"
+																variant="light"
+																onPress={() => handleDeleteComment(reply._id)}
+																className="shrink-0"
+															>
+																<Trash2 className="h-3 w-3 text-red-500" />
+															</Button>
+														) : (
+															loggedInUser && (
+																<Dropdown>
+																	<DropdownTrigger>
+																		<Button
+																			isIconOnly
+																			size="sm"
+																			variant="light"
+																			className="shrink-0"
+																		>
+																			<MoreVertical className="h-3 w-3" />
+																		</Button>
+																	</DropdownTrigger>
+																	<DropdownMenu>
+																		<DropdownItem
+																			key="report"
+																			startContent={<Flag className="h-4 w-4" />}
+																			onPress={() =>
+																				setReportUserId(reply.authorId)
+																			}
+																		>
+																			Report User
+																		</DropdownItem>
+																		<DropdownItem
+																			key="mute"
+																			startContent={<VolumeX className="h-4 w-4" />}
+																			onPress={() => handleMuteUser(reply.authorId)}
+																		>
+																			Mute User
+																		</DropdownItem>
+																	</DropdownMenu>
+																</Dropdown>
+															)
+														)}
+													</div>
 												</div>
 												<p className="text-gray-900 text-sm leading-relaxed dark:text-gray-100">
 													{reply.content}
@@ -293,6 +412,64 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 				onClose={() => setShowSignInPrompt(false)}
 				action="comment on this post"
 			/>
+
+			{/* Report User Modal */}
+			<Modal
+				isOpen={reportUserId !== null}
+				onClose={() => {
+					setReportUserId(null);
+					setReportDescription("");
+				}}
+			>
+				<ModalContent>
+					<ModalHeader>Report User</ModalHeader>
+					<ModalBody>
+						<Select
+							label="Reason"
+							selectedKeys={[reportReason]}
+							onSelectionChange={(keys) =>
+								setReportReason(
+									Array.from(keys)[0] as
+									| "spam"
+									| "harassment"
+									| "inappropriate_content"
+									| "impersonation"
+									| "other",
+								)
+							}
+						>
+							<SelectItem key="spam">Spam</SelectItem>
+							<SelectItem key="harassment">Harassment</SelectItem>
+							<SelectItem key="inappropriate_content">
+								Inappropriate Content
+							</SelectItem>
+							<SelectItem key="impersonation">Impersonation</SelectItem>
+							<SelectItem key="other">Other</SelectItem>
+						</Select>
+						<Textarea
+							label="Description (optional)"
+							placeholder="Provide additional details..."
+							value={reportDescription}
+							onValueChange={setReportDescription}
+							minRows={3}
+						/>
+					</ModalBody>
+					<ModalFooter>
+						<Button
+							variant="light"
+							onPress={() => {
+								setReportUserId(null);
+								setReportDescription("");
+							}}
+						>
+							Cancel
+						</Button>
+						<Button color="danger" onPress={handleReportUser}>
+							Submit Report
+						</Button>
+					</ModalFooter>
+				</ModalContent>
+			</Modal>
 		</div>
 	);
 }

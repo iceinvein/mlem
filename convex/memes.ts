@@ -21,6 +21,16 @@ export const getFeed = query({
 		const userId = await getAuthUserId(ctx);
 		const sortBy = args.sortBy || "newest";
 
+		// Get muted users list if user is logged in
+		let mutedUserIds: Array<Id<"users">> = [];
+		if (userId) {
+			const mutedUsers = await ctx.db
+				.query("mutedUsers")
+				.withIndex("by_user", (q) => q.eq("userId", userId))
+				.collect();
+			mutedUserIds = mutedUsers.map((m) => m.mutedUserId);
+		}
+
 		// biome-ignore lint: paginatedResult type is inferred
 		let paginatedResult;
 
@@ -44,7 +54,11 @@ export const getFeed = query({
 				.paginate(args.paginationOpts);
 		}
 
-		const memes = paginatedResult.page;
+		// Filter out memes from muted users
+		const memes = paginatedResult.page.filter(
+			(meme) =>
+				!meme.authorId || !mutedUserIds.includes(meme.authorId as Id<"users">),
+		);
 
 		// Sort by popularity if needed and category filter is applied
 		if (args.categoryId && sortBy === "popular") {

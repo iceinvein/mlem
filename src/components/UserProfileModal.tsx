@@ -5,10 +5,16 @@ import {
 	Modal,
 	ModalBody,
 	ModalContent,
+	ModalFooter,
+	ModalHeader,
+	Select,
+	SelectItem,
+	Textarea,
 } from "@heroui/react";
-import { useQuery } from "convex/react";
-import { Calendar, Heart, ImageIcon, ImageOff } from "lucide-react";
+import { useMutation, useQuery } from "convex/react";
+import { Calendar, Flag, Heart, ImageIcon, ImageOff, VolumeX } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
@@ -25,7 +31,16 @@ export function UserProfileModal({
 }: UserProfileModalProps) {
 	const profile = useQuery(api.users.getUserProfile, { userId });
 	const memes = useQuery(api.users.getUserMemes, { userId });
+	const loggedInUser = useQuery(api.auth.loggedInUser);
 	const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+	const [showReportModal, setShowReportModal] = useState(false);
+	const [reportReason, setReportReason] = useState<
+		"spam" | "harassment" | "inappropriate_content" | "impersonation" | "other"
+	>("spam");
+	const [reportDescription, setReportDescription] = useState("");
+
+	const reportUser = useMutation(api.userReports.reportUser);
+	const muteUser = useMutation(api.userReports.muteUser);
 
 	if (!profile) {
 		return null;
@@ -41,6 +56,37 @@ export function UserProfileModal({
 	const handleImageError = (memeId: string) => {
 		setImageErrors((prev) => new Set(prev).add(memeId));
 	};
+
+	const handleReportUser = async () => {
+		try {
+			await reportUser({
+				reportedUserId: userId,
+				reason: reportReason,
+				description: reportDescription || undefined,
+			});
+			toast.success("User reported successfully");
+			setShowReportModal(false);
+			setReportDescription("");
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Failed to report user",
+			);
+		}
+	};
+
+	const handleMuteUser = async () => {
+		try {
+			await muteUser({ mutedUserId: userId });
+			toast.success("User muted successfully");
+			onClose();
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Failed to mute user",
+			);
+		}
+	};
+
+	const isOwnProfile = loggedInUser?._id === userId;
 
 	return (
 		<Modal
@@ -108,25 +154,29 @@ export function UserProfileModal({
 							</div>
 						</div>
 
-						{/* Future action buttons placeholder */}
-						<div className="flex w-full gap-2">
-							<Button
-								size="sm"
-								variant="flat"
-								className="flex-1 bg-gray-200 dark:bg-gray-800"
-								isDisabled
-							>
-								Report
-							</Button>
-							<Button
-								size="sm"
-								variant="flat"
-								className="flex-1 bg-gray-200 dark:bg-gray-800"
-								isDisabled
-							>
-								Mute
-							</Button>
-						</div>
+						{/* Action buttons */}
+						{!isOwnProfile && loggedInUser && (
+							<div className="flex w-full gap-2">
+								<Button
+									size="sm"
+									variant="flat"
+									className="flex-1 bg-gray-200 dark:bg-gray-800"
+									startContent={<Flag className="h-4 w-4" />}
+									onPress={() => setShowReportModal(true)}
+								>
+									Report
+								</Button>
+								<Button
+									size="sm"
+									variant="flat"
+									className="flex-1 bg-gray-200 dark:bg-gray-800"
+									startContent={<VolumeX className="h-4 w-4" />}
+									onPress={handleMuteUser}
+								>
+									Mute
+								</Button>
+							</div>
+						)}
 					</div>
 				</div>
 
@@ -203,6 +253,64 @@ export function UserProfileModal({
 					</div>
 				</ModalBody>
 			</ModalContent>
+
+			{/* Report User Modal */}
+			<Modal
+				isOpen={showReportModal}
+				onClose={() => {
+					setShowReportModal(false);
+					setReportDescription("");
+				}}
+			>
+				<ModalContent>
+					<ModalHeader>Report User</ModalHeader>
+					<ModalBody>
+						<Select
+							label="Reason"
+							selectedKeys={[reportReason]}
+							onSelectionChange={(keys) =>
+								setReportReason(
+									Array.from(keys)[0] as
+										| "spam"
+										| "harassment"
+										| "inappropriate_content"
+										| "impersonation"
+										| "other",
+								)
+							}
+						>
+							<SelectItem key="spam">Spam</SelectItem>
+							<SelectItem key="harassment">Harassment</SelectItem>
+							<SelectItem key="inappropriate_content">
+								Inappropriate Content
+							</SelectItem>
+							<SelectItem key="impersonation">Impersonation</SelectItem>
+							<SelectItem key="other">Other</SelectItem>
+						</Select>
+						<Textarea
+							label="Description (optional)"
+							placeholder="Provide additional details..."
+							value={reportDescription}
+							onValueChange={setReportDescription}
+							minRows={3}
+						/>
+					</ModalBody>
+					<ModalFooter>
+						<Button
+							variant="light"
+							onPress={() => {
+								setShowReportModal(false);
+								setReportDescription("");
+							}}
+						>
+							Cancel
+						</Button>
+						<Button color="danger" onPress={handleReportUser}>
+							Submit Report
+						</Button>
+					</ModalFooter>
+				</ModalContent>
+			</Modal>
 		</Modal>
 	);
 }

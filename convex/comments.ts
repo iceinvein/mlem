@@ -5,6 +5,18 @@ import { mutation, query } from "./_generated/server";
 export const getComments = query({
 	args: { memeId: v.id("memes") },
 	handler: async (ctx, args) => {
+		const userId = await getAuthUserId(ctx);
+
+		// Get muted users list if user is logged in
+		const mutedUserIds: Array<string> = [];
+		if (userId) {
+			const mutedUsers = await ctx.db
+				.query("mutedUsers")
+				.withIndex("by_user", (q) => q.eq("userId", userId))
+				.collect();
+			mutedUserIds.push(...mutedUsers.map((m) => m.mutedUserId));
+		}
+
 		const comments = await ctx.db
 			.query("comments")
 			.withIndex("by_meme", (q) => q.eq("memeId", args.memeId))
@@ -12,8 +24,13 @@ export const getComments = query({
 			.order("desc")
 			.collect();
 
+		// Filter out comments from muted users
+		const filteredComments = comments.filter(
+			(comment) => !mutedUserIds.includes(comment.authorId),
+		);
+
 		const commentsWithAuthors = await Promise.all(
-			comments.map(async (comment) => {
+			filteredComments.map(async (comment) => {
 				const author = await ctx.db.get(comment.authorId);
 				const replies = await ctx.db
 					.query("comments")
@@ -21,8 +38,13 @@ export const getComments = query({
 					.order("asc")
 					.collect();
 
+				// Filter out replies from muted users
+				const filteredReplies = replies.filter(
+					(reply) => !mutedUserIds.includes(reply.authorId),
+				);
+
 				const repliesWithAuthors = await Promise.all(
-					replies.map(async (reply) => {
+					filteredReplies.map(async (reply) => {
 						const replyAuthor = await ctx.db.get(reply.authorId);
 						return {
 							...reply,

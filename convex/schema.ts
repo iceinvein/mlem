@@ -79,6 +79,45 @@ const applicationTables = {
 		.index("by_status", ["status"])
 		.index("by_reporter", ["reporterId"]),
 
+	userReports: defineTable({
+		reporterId: v.id("users"),
+		reportedUserId: v.id("users"),
+		reason: v.union(
+			v.literal("spam"),
+			v.literal("harassment"),
+			v.literal("inappropriate_content"),
+			v.literal("impersonation"),
+			v.literal("other"),
+		),
+		description: v.optional(v.string()),
+		status: v.union(
+			v.literal("pending"),
+			v.literal("reviewed"),
+			v.literal("resolved"),
+			v.literal("dismissed"),
+		),
+		moderatorId: v.optional(v.id("users")),
+		moderatorNotes: v.optional(v.string()),
+		actionTaken: v.optional(
+			v.union(
+				v.literal("none"),
+				v.literal("warning"),
+				v.literal("user_muted"),
+				v.literal("user_suspended"),
+			),
+		),
+	})
+		.index("by_reported_user", ["reportedUserId"])
+		.index("by_status", ["status"])
+		.index("by_reporter", ["reporterId"]),
+
+	mutedUsers: defineTable({
+		userId: v.id("users"),
+		mutedUserId: v.id("users"),
+	})
+		.index("by_user", ["userId"])
+		.index("by_user_and_muted", ["userId", "mutedUserId"]),
+
 	userRoles: defineTable({
 		userId: v.id("users"),
 		role: v.union(

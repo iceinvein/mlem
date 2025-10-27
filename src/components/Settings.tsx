@@ -1,17 +1,31 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import {
+	Avatar,
 	Button,
 	Card,
 	CardBody,
 	CardHeader,
 	Chip,
 	Input,
+	Modal,
+	ModalBody,
+	ModalContent,
 	Select,
 	SelectItem,
+	Spinner,
 	Switch,
 } from "@heroui/react";
 import { useMutation, useQuery } from "convex/react";
-import { Check, Edit3, LogOut, Monitor, Moon, Shield, Sun } from "lucide-react";
+import {
+	Check,
+	Edit3,
+	LogOut,
+	Monitor,
+	Moon,
+	Shield,
+	Sun,
+	VolumeX,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -39,6 +53,10 @@ export function Settings() {
 	const [isEditingUsername, setIsEditingUsername] = useState(false);
 	const [newUsername, setNewUsername] = useState("");
 	const [mounted, setMounted] = useState(false);
+	const [showMutedUsersModal, setShowMutedUsersModal] = useState(false);
+
+	const mutedUsers = useQuery(api.userReports.getMutedUsers);
+	const unmuteUser = useMutation(api.userReports.unmuteUser);
 
 	useEffect(() => {
 		if (userPreferences) {
@@ -87,6 +105,17 @@ export function Settings() {
 	};
 
 	const isLoadingData = !categories || !loggedInUser;
+
+	const handleUnmuteUser = async (mutedUserId: Id<"users">) => {
+		try {
+			await unmuteUser({ mutedUserId });
+			toast.success("User unmuted successfully");
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Failed to unmute user",
+			);
+		}
+	};
 
 	return (
 		<div className="mx-auto max-w-[600px] animate-fade-in px-4 pt-6 pb-24">
@@ -339,6 +368,30 @@ export function Settings() {
 			)}
 
 			<div className="my-6 rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-900">
+				<h3 className="mb-2 font-bold text-base text-gray-900 dark:text-gray-100">
+					Muted Users
+				</h3>
+				<p className="mb-4 text-gray-500 text-sm">
+					Manage users you've muted. Their content won't appear in your feed.
+				</p>
+				<Button
+					className="w-full bg-gray-100 font-semibold text-gray-900 dark:bg-gray-800 dark:text-gray-100"
+					onPress={() => setShowMutedUsersModal(true)}
+					startContent={<VolumeX className="h-4 w-4" />}
+					size="lg"
+					radius="full"
+					variant="flat"
+				>
+					View Muted Users
+					{mutedUsers && mutedUsers.length > 0 && (
+						<Chip size="sm" className="ml-2">
+							{mutedUsers.length}
+						</Chip>
+					)}
+				</Button>
+			</div>
+
+			<div className="my-6 rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-900">
 				<h3 className="mb-4 font-bold text-base text-gray-900 dark:text-gray-100">
 					Appearance
 				</h3>
@@ -455,6 +508,109 @@ export function Settings() {
 					your experience and never miss the content you love.
 				</p>
 			</div>
+
+			{/* Muted Users Modal */}
+			<Modal
+				isOpen={showMutedUsersModal}
+				onClose={() => setShowMutedUsersModal(false)}
+				placement="bottom"
+				motionProps={{
+					variants: {
+						enter: {
+							y: 0,
+							transition: {
+								duration: 0.3,
+								ease: "easeOut",
+							},
+						},
+						exit: {
+							y: "100%",
+							transition: {
+								duration: 0.2,
+								ease: "easeIn",
+							},
+						},
+					},
+				}}
+				classNames={{
+					wrapper: "items-end",
+					base: "max-w-[600px] mx-auto h-[70vh]! rounded-t-3xl mb-0 sm:mb-0",
+					backdrop: "backdrop-blur-sm bg-black/50",
+				}}
+				scrollBehavior="inside"
+			>
+				<ModalContent className="h-[70vh]! bg-gray-50 dark:bg-gray-950">
+					{/* Header with drag indicator */}
+					<div className="flex flex-col items-center border-gray-200 border-b pt-2 pb-3 dark:border-gray-800">
+						<div className="mb-3 h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-700" />
+						<h3 className="font-bold text-base text-gray-900 dark:text-gray-100">
+							Muted Users
+						</h3>
+					</div>
+
+					<ModalBody className="px-4 py-6">
+						{!mutedUsers ? (
+							<div className="flex justify-center py-8">
+								<Spinner />
+							</div>
+						) : mutedUsers.length === 0 ? (
+							<div className="py-12 text-center">
+								<VolumeX
+									className="mx-auto mb-3 h-16 w-16 text-gray-400"
+									strokeWidth={1.5}
+								/>
+								<p className="mb-1 font-bold text-gray-900 dark:text-gray-100">
+									No muted users
+								</p>
+								<p className="text-gray-500 text-sm">
+									Users you mute will appear here
+								</p>
+							</div>
+						) : (
+							<div className="space-y-3">
+								{mutedUsers.map((mute) => (
+									<div
+										key={mute._id}
+										className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
+									>
+										<div className="flex items-center gap-3">
+											<Avatar
+												size="md"
+												name={
+													mute.mutedUser?.name?.[0] ||
+													mute.mutedUser?.email?.[0] ||
+													"?"
+												}
+												className="bg-gray-900 dark:bg-gray-100"
+											/>
+											<div>
+												<p className="font-semibold text-gray-900 text-sm dark:text-gray-100">
+													{mute.mutedUser?.name ||
+														mute.mutedUser?.email ||
+														"Unknown User"}
+												</p>
+												<p className="text-gray-500 text-xs">
+													Muted{" "}
+													{new Date(mute._creationTime).toLocaleDateString()}
+												</p>
+											</div>
+										</div>
+										<Button
+											size="sm"
+											variant="flat"
+											onPress={() => handleUnmuteUser(mute.mutedUserId)}
+											className="bg-gray-100 dark:bg-gray-800"
+											radius="full"
+										>
+											Unmute
+										</Button>
+									</div>
+								))}
+							</div>
+						)}
+					</ModalBody>
+				</ModalContent>
+			</Modal>
 		</div>
 	);
 }

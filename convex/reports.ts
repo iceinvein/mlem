@@ -28,6 +28,28 @@ export const reportMeme = mutation({
 			.first();
 
 		if (existingReport) {
+			// Provide different messages based on report status
+			if (existingReport.status === "pending") {
+				throw new Error(
+					"Your report has already been submitted and is pending review",
+				);
+			}
+			if (existingReport.status === "reviewed") {
+				throw new Error(
+					"Your report has been submitted and is currently under review",
+				);
+			}
+			if (existingReport.status === "resolved") {
+				throw new Error(
+					"You have already reported this content. The report was reviewed and resolved by our moderation team",
+				);
+			}
+			if (existingReport.status === "dismissed") {
+				throw new Error(
+					"You have already reported this content. The report was reviewed and dismissed by our moderation team",
+				);
+			}
+			// Fallback for any other status
 			throw new Error("You have already reported this content");
 		}
 
