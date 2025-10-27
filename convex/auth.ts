@@ -1,13 +1,11 @@
 import Apple from "@auth/core/providers/apple";
 import Google from "@auth/core/providers/google";
-import { Password } from "@convex-dev/auth/providers/Password";
 import { convexAuth, getAuthUserId } from "@convex-dev/auth/server";
 import { query } from "./_generated/server";
 import { generateUsername } from "./usernameGenerator";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
 	providers: [
-		Password,
 		Google,
 		Apple({
 			profile: (appleInfo) => {
