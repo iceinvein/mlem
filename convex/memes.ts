@@ -278,6 +278,39 @@ export const createMeme = mutation({
 		const userId = await getAuthUserId(ctx);
 		if (!userId) throw new Error("Must be logged in");
 
+		// Check moderation status
+		const moderationStatus = await ctx.db
+			.query("userModerationStatus")
+			.withIndex("by_user", (q) => q.eq("userId", userId))
+			.unique();
+
+		if (moderationStatus) {
+			// Check if suspended
+			if (moderationStatus.isSuspended) {
+				if (
+					moderationStatus.suspendedUntil &&
+					moderationStatus.suspendedUntil < Date.now()
+				) {
+					// Suspension expired, update status
+					await ctx.db.patch(moderationStatus._id, {
+						isSuspended: false,
+						suspendedUntil: undefined,
+					});
+				} else {
+					throw new Error(
+						moderationStatus.suspendedUntil
+							? `Your account is suspended until ${new Date(moderationStatus.suspendedUntil).toLocaleDateString()}`
+							: "Your account is suspended indefinitely",
+					);
+				}
+			}
+
+			// Check if muted
+			if (moderationStatus.isMuted) {
+				throw new Error("You are muted and cannot post content");
+			}
+		}
+
 		// Rate limiting: Check if user is admin/moderator (they get unlimited posts)
 		const userRole = await ctx.db
 			.query("userRoles")

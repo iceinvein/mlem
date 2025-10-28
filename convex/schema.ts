@@ -136,6 +136,37 @@ const applicationTables = {
 		hasChangedUsername: v.boolean(),
 		usernameChangedAt: v.optional(v.number()),
 	}).index("by_user", ["userId"]),
+
+	moderationActions: defineTable({
+		userId: v.id("users"),
+		moderatorId: v.id("users"),
+		actionType: v.union(
+			v.literal("warning"),
+			v.literal("strike"),
+			v.literal("mute"),
+			v.literal("suspend"),
+		),
+		reason: v.string(),
+		notes: v.optional(v.string()),
+		relatedReportId: v.optional(v.union(v.id("reports"), v.id("userReports"))),
+		expiresAt: v.optional(v.number()),
+		isActive: v.boolean(),
+		seenByUser: v.optional(v.boolean()),
+	})
+		.index("by_user", ["userId"])
+		.index("by_user_and_active", ["userId", "isActive"])
+		.index("by_type", ["actionType"]),
+
+	userModerationStatus: defineTable({
+		userId: v.id("users"),
+		warningCount: v.number(),
+		strikeCount: v.number(),
+		isMuted: v.boolean(),
+		isSuspended: v.boolean(),
+		suspendedUntil: v.optional(v.number()),
+		lastWarningAt: v.optional(v.number()),
+		lastStrikeAt: v.optional(v.number()),
+	}).index("by_user", ["userId"]),
 };
 
 export default defineSchema({

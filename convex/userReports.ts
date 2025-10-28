@@ -466,10 +466,7 @@ export const getReportedUsers = query({
 		const allReports = await ctx.db.query("userReports").collect();
 
 		// Group by reported user
-		const userReportMap = new Map<
-			string,
-			{ total: number; pending: number }
-		>();
+		const userReportMap = new Map<string, { total: number; pending: number }>();
 
 		for (const report of allReports) {
 			const userId = report.reportedUserId;
@@ -497,7 +494,7 @@ export const getReportedUsers = query({
 				}> => {
 					const userId = userIdStr as Id<"users">;
 					const user = await ctx.db.get(userId);
-					
+
 					if (!user) {
 						return {
 							userId: userId,
@@ -506,7 +503,7 @@ export const getReportedUsers = query({
 							pendingReports: counts.pending,
 						};
 					}
-					
+
 					return {
 						userId: userId,
 						user: {

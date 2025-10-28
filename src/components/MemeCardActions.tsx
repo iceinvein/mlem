@@ -36,7 +36,12 @@ export function MemeCardActions({
 	const [showReportMeme, setShowReportMeme] = useState(false);
 	const [showReportUser, setShowReportUser] = useState(false);
 	const [memeReportReason, setMemeReportReason] = useState<
-		"spam" | "inappropriate" | "harassment" | "copyright" | "misinformation" | "other"
+		| "spam"
+		| "inappropriate"
+		| "harassment"
+		| "copyright"
+		| "misinformation"
+		| "other"
 	>("spam");
 	const [userReportReason, setUserReportReason] = useState<
 		"spam" | "harassment" | "inappropriate_content" | "impersonation" | "other"

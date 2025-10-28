@@ -9,8 +9,11 @@ import { BottomNav } from "./components/BottomNav";
 import { CategoryManagement } from "./components/CategoryManagement";
 import { Feed } from "./components/Feed";
 import { ModerationDashboard } from "./components/ModerationDashboard";
+import { ModerationWarningBanner } from "./components/ModerationWarningBanner";
+import { ModerationWarningModal } from "./components/ModerationWarningModal";
 import { Settings } from "./components/Settings";
 import { SinglePost } from "./components/SinglePost";
+import { SuspensionCheck } from "./components/SuspensionCheck";
 
 export default function App() {
 	const [showNav, setShowNav] = useState(false);
@@ -66,6 +69,8 @@ export default function App() {
 					</motion.div>
 				</div>
 			</motion.header>
+			<ModerationWarningBanner />
+			<ModerationWarningModal />
 			<main className="flex-1 pt-14 pb-16">
 				<Content />
 			</main>
@@ -84,6 +89,9 @@ function Content() {
 	const [showSplash, setShowSplash] = useState(true);
 	const [minLoadingComplete, setMinLoadingComplete] = useState(false);
 	const [currentMemeId, setCurrentMemeId] = useState<string | null>(null);
+
+	// Check suspension status for logged-in users
+	const suspensionCheckComponent = loggedInUser ? <SuspensionCheck /> : null;
 
 	// Handle URL hash changes for routing
 	useEffect(() => {
@@ -236,6 +244,7 @@ function Content() {
 
 	return (
 		<div className="relative h-[calc(100vh-14rem)]">
+			{suspensionCheckComponent}
 			{currentMemeId ? (
 				<SinglePost
 					memeId={currentMemeId as Id<"memes">}

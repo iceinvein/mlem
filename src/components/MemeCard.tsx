@@ -188,10 +188,11 @@ function MemeCardComponent({ meme, hideCommentModal = false }: MemeCardProps) {
 								className="group flex items-center gap-2"
 							>
 								<Heart
-									className={`h-6 w-6 transition-all ${meme.userLiked
+									className={`h-6 w-6 transition-all ${
+										meme.userLiked
 											? "scale-110 fill-red-500 text-red-500"
 											: "text-gray-900 group-hover:text-gray-500 dark:text-gray-100"
-										}`}
+									}`}
 								/>
 								<span className="font-semibold text-gray-900 text-sm dark:text-gray-100">
 									{meme.likes}

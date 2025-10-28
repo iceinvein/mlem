@@ -9,6 +9,7 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import { MessageCircle, Send, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
@@ -28,9 +29,19 @@ export function CommentModal({ memeId, isOpen, onClose }: CommentModalProps) {
 	const addComment = useMutation(api.comments.addComment);
 	const deleteComment = useMutation(api.comments.deleteComment);
 	const loggedInUser = useQuery(api.auth.loggedInUser);
+	const moderationStatus = useQuery(api.moderation.checkSuspensionStatus);
 
 	const handleAddComment = async () => {
 		if (!newComment.trim()) return;
+
+		// Check if user is muted or suspended
+		if (moderationStatus?.isSuspended || moderationStatus?.isMuted) {
+			toast.error("Cannot Comment", {
+				description:
+					moderationStatus.reason || "You cannot comment at this time",
+			});
+			return;
+		}
 
 		try {
 			await addComment({
@@ -38,13 +49,25 @@ export function CommentModal({ memeId, isOpen, onClose }: CommentModalProps) {
 				content: newComment.trim(),
 			});
 			setNewComment("");
-		} catch {
-			// Silent fail for seamless experience
+		} catch (error) {
+			toast.error("Failed to add comment", {
+				description:
+					error instanceof Error ? error.message : "Please try again",
+			});
 		}
 	};
 
 	const handleAddReply = async () => {
 		if (!replyContent.trim() || !replyTo) return;
+
+		// Check if user is muted or suspended
+		if (moderationStatus?.isSuspended || moderationStatus?.isMuted) {
+			toast.error("Cannot Reply", {
+				description:
+					moderationStatus.reason || "You cannot reply at this time",
+			});
+			return;
+		}
 
 		try {
 			await addComment({
@@ -54,8 +77,11 @@ export function CommentModal({ memeId, isOpen, onClose }: CommentModalProps) {
 			});
 			setReplyContent("");
 			setReplyTo(null);
-		} catch {
-			// Silent fail for seamless experience
+		} catch (error) {
+			toast.error("Failed to add reply", {
+				description:
+					error instanceof Error ? error.message : "Please try again",
+			});
 		}
 	};
 

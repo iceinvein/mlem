@@ -10,6 +10,7 @@ import {
 	TrendingUp,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { CreateMemeModal } from "./CreateMemeModal";
@@ -29,6 +30,7 @@ export function Feed() {
 	const categories = useQuery(api.memes.getCategories);
 	const userPreferences = useQuery(api.memes.getUserPreferences);
 	const viewer = useQuery(api.auth.loggedInUser);
+	const moderationStatus = useQuery(api.moderation.checkSuspensionStatus);
 	const seedCategories = useMutation(api.memes.seedCategories);
 
 	const { results, status, loadMore } = usePaginatedQuery(
@@ -102,6 +104,17 @@ export function Feed() {
 							onPress={() => {
 								if (!viewer) {
 									setShowSignInPrompt(true);
+									return;
+								}
+								// Check if user is muted or suspended
+								if (
+									moderationStatus?.isSuspended ||
+									moderationStatus?.isMuted
+								) {
+									toast.error("Cannot Create Post", {
+										description:
+											moderationStatus.reason || "You cannot post at this time",
+									});
 									return;
 								}
 								setShowCreateModal(true);

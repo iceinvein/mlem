@@ -15,7 +15,14 @@ import {
 	Textarea,
 } from "@heroui/react";
 import { useMutation, useQuery } from "convex/react";
-import { Flag, MessageCircle, MoreVertical, Send, Trash2, VolumeX } from "lucide-react";
+import {
+	Flag,
+	MessageCircle,
+	MoreVertical,
+	Send,
+	Trash2,
+	VolumeX,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
@@ -41,6 +48,7 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 	const addComment = useMutation(api.comments.addComment);
 	const deleteComment = useMutation(api.comments.deleteComment);
 	const loggedInUser = useQuery(api.auth.loggedInUser);
+	const moderationStatus = useQuery(api.moderation.checkSuspensionStatus);
 	const reportUser = useMutation(api.userReports.reportUser);
 	const muteUser = useMutation(api.userReports.muteUser);
 
@@ -49,6 +57,16 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 			setShowSignInPrompt(true);
 			return;
 		}
+
+		// Check if user is muted or suspended
+		if (moderationStatus?.isSuspended || moderationStatus?.isMuted) {
+			toast.error("Cannot Comment", {
+				description:
+					moderationStatus.reason || "You cannot comment at this time",
+			});
+			return;
+		}
+
 		if (!newComment.trim()) return;
 
 		try {
@@ -57,13 +75,24 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 				content: newComment.trim(),
 			});
 			setNewComment("");
-		} catch {
-			// Silent fail for seamless experience
+		} catch (error) {
+			toast.error("Failed to add comment", {
+				description:
+					error instanceof Error ? error.message : "Please try again",
+			});
 		}
 	};
 
 	const handleAddReply = async () => {
 		if (!replyContent.trim() || !replyTo) return;
+
+		// Check if user is muted or suspended
+		if (moderationStatus?.isSuspended || moderationStatus?.isMuted) {
+			toast.error("Cannot Reply", {
+				description: moderationStatus.reason || "You cannot reply at this time",
+			});
+			return;
+		}
 
 		try {
 			await addComment({
@@ -73,8 +102,11 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 			});
 			setReplyContent("");
 			setReplyTo(null);
-		} catch {
-			// Silent fail for seamless experience
+		} catch (error) {
+			toast.error("Failed to add reply", {
+				description:
+					error instanceof Error ? error.message : "Please try again",
+			});
 		}
 	};
 
@@ -149,10 +181,11 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 					</div>
 					<Button
 						isIconOnly
-						className={`shrink-0 transition-all ${newComment.trim()
-							? "scale-100 bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-							: "scale-95 bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600"
-							}`}
+						className={`shrink-0 transition-all ${
+							newComment.trim()
+								? "scale-100 bg-gray-900 text-white dark:bg-white dark:text-gray-900"
+								: "scale-95 bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600"
+						}`}
 						onPress={handleAddComment}
 						isDisabled={!newComment.trim()}
 						radius="full"
@@ -219,7 +252,9 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 															<DropdownItem
 																key="report"
 																startContent={<Flag className="h-4 w-4" />}
-																onPress={() => setReportUserId(comment.authorId)}
+																onPress={() =>
+																	setReportUserId(comment.authorId)
+																}
 															>
 																Report User
 															</DropdownItem>
@@ -310,7 +345,9 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 																	<DropdownMenu>
 																		<DropdownItem
 																			key="report"
-																			startContent={<Flag className="h-4 w-4" />}
+																			startContent={
+																				<Flag className="h-4 w-4" />
+																			}
 																			onPress={() =>
 																				setReportUserId(reply.authorId)
 																			}
@@ -319,8 +356,12 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 																		</DropdownItem>
 																		<DropdownItem
 																			key="mute"
-																			startContent={<VolumeX className="h-4 w-4" />}
-																			onPress={() => handleMuteUser(reply.authorId)}
+																			startContent={
+																				<VolumeX className="h-4 w-4" />
+																			}
+																			onPress={() =>
+																				handleMuteUser(reply.authorId)
+																			}
 																		>
 																			Mute User
 																		</DropdownItem>
@@ -430,11 +471,11 @@ export function CommentSection({ memeId }: CommentSectionProps) {
 							onSelectionChange={(keys) =>
 								setReportReason(
 									Array.from(keys)[0] as
-									| "spam"
-									| "harassment"
-									| "inappropriate_content"
-									| "impersonation"
-									| "other",
+										| "spam"
+										| "harassment"
+										| "inappropriate_content"
+										| "impersonation"
+										| "other",
 								)
 							}
 						>

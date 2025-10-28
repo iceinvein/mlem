@@ -7,8 +7,6 @@ import {
 	Modal,
 	ModalBody,
 	ModalContent,
-	ModalFooter,
-	ModalHeader,
 	Select,
 	SelectItem,
 	Spinner,
@@ -21,24 +19,37 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
 export function ModerationPanel() {
-	const [selectedTab, setSelectedTab] = useState<"user-reports" | "meme-reports">(
-		"user-reports",
-	);
+	const [selectedTab, setSelectedTab] = useState<
+		"user-reports" | "meme-reports"
+	>("user-reports");
 	const [selectedUserId, setSelectedUserId] = useState<Id<"users"> | null>(
 		null,
 	);
-	const [selectedReportId, setSelectedReportId] = useState<
-		Id<"userReports"> | null
-	>(null);
+	const [selectedReportId, setSelectedReportId] =
+		useState<Id<"userReports"> | null>(null);
 	const [showUserDetails, setShowUserDetails] = useState(false);
 	const [moderatorNotes, setModeratorNotes] = useState("");
 	const [actionTaken, setActionTaken] = useState<
 		"none" | "warning" | "user_muted" | "user_suspended"
 	>("none");
+	const [showModerationModal, setShowModerationModal] = useState(false);
+	const [selectedUserForModeration, setSelectedUserForModeration] =
+		useState<Id<"users"> | null>(null);
+	const [moderationAction, setModerationAction] = useState<
+		"warning" | "strike" | "mute" | "suspend"
+	>("warning");
+	const [suspensionDuration, setSuspensionDuration] = useState<
+		"7_days" | "30_days" | "90_days" | "indefinite"
+	>("7_days");
+	const [moderationReason, setModerationReason] = useState("");
 
 	const reportedUsers = useQuery(api.userReports.getReportedUsers);
 	const userReports = useQuery(api.userReports.getUserReports, {});
 	const memeReports = useQuery(api.reports.getReports, {});
+	const usersModerationStatus = useQuery(
+		api.moderation.getUsersModerationStatus,
+		reportedUsers ? { userIds: reportedUsers.map((u) => u.userId) } : "skip",
+	);
 	const userMemes = useQuery(
 		api.users.getUserMemes,
 		selectedUserId ? { userId: selectedUserId } : "skip",
@@ -50,6 +61,20 @@ export function ModerationPanel() {
 
 	const updateUserReport = useMutation(api.userReports.updateUserReportStatus);
 	const updateMemeReport = useMutation(api.reports.updateReportStatus);
+	const issueWarning = useMutation(api.moderation.issueWarning);
+	const issueStrike = useMutation(api.moderation.issueStrike);
+	const muteUserMutation = useMutation(api.moderation.muteUser);
+	const suspendUserMutation = useMutation(api.moderation.suspendUser);
+	const unmuteUserMutation = useMutation(api.moderation.unmuteUser);
+	const unsuspendUserMutation = useMutation(api.moderation.unsuspendUser);
+	const userModerationStatus = useQuery(
+		api.moderation.getUserModerationStatus,
+		selectedUserForModeration ? { userId: selectedUserForModeration } : "skip",
+	);
+	const userModerationHistory = useQuery(
+		api.moderation.getUserModerationHistory,
+		selectedUserForModeration ? { userId: selectedUserForModeration } : "skip",
+	);
 
 	const handleUpdateUserReport = async (
 		reportId: Id<"userReports">,
@@ -205,6 +230,70 @@ export function ModerationPanel() {
 																				).toLocaleDateString()
 																			: "Unknown"}
 																	</p>
+																	{/* Moderation Status Indicators */}
+																	{usersModerationStatus && (
+																		<div className="mt-2 flex flex-wrap gap-1">
+																			{(() => {
+																				const status =
+																					usersModerationStatus.find(
+																						(s) => s.userId === item.userId,
+																					)?.status;
+																				if (!status) return null;
+
+																				return (
+																					<>
+																						{status.warningCount > 0 && (
+																							<Chip
+																								size="sm"
+																								color="warning"
+																								variant="bordered"
+																								startContent={
+																									<AlertTriangle className="h-3 w-3" />
+																								}
+																							>
+																								{status.warningCount} warning
+																								{status.warningCount > 1
+																									? "s"
+																									: ""}
+																							</Chip>
+																						)}
+																						{status.strikeCount > 0 && (
+																							<Chip
+																								size="sm"
+																								color="danger"
+																								variant="bordered"
+																								startContent={
+																									<Shield className="h-3 w-3" />
+																								}
+																							>
+																								{status.strikeCount}/2 strikes
+																							</Chip>
+																						)}
+																						{status.isMuted && (
+																							<Chip
+																								size="sm"
+																								color="danger"
+																								variant="flat"
+																							>
+																								MUTED
+																							</Chip>
+																						)}
+																						{status.isSuspended && (
+																							<Chip
+																								size="sm"
+																								color="danger"
+																								variant="solid"
+																							>
+																								SUSPENDED
+																								{status.suspendedUntil &&
+																									` until ${new Date(status.suspendedUntil).toLocaleDateString()}`}
+																							</Chip>
+																						)}
+																					</>
+																				);
+																			})()}
+																		</div>
+																	)}
 																</div>
 															</div>
 														</div>
@@ -214,7 +303,7 @@ export function ModerationPanel() {
 															<div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
 																<div className="mb-2 flex items-center gap-2">
 																	<AlertTriangle className="h-4 w-4 text-orange-500" />
-																	<p className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+																	<p className="font-semibold text-gray-900 text-sm dark:text-gray-100">
 																		Latest Report
 																	</p>
 																	<Chip
@@ -227,7 +316,9 @@ export function ModerationPanel() {
 																					: "default"
 																		}
 																	>
-																		{latestReport.status.charAt(0).toUpperCase() +
+																		{latestReport.status
+																			.charAt(0)
+																			.toUpperCase() +
 																			latestReport.status.slice(1)}
 																	</Chip>
 																</div>
@@ -267,15 +358,30 @@ export function ModerationPanel() {
 															>
 																View Details
 															</Button>
+															<Button
+																size="sm"
+																color="warning"
+																variant="flat"
+																startContent={<Shield className="h-4 w-4" />}
+																onPress={() => {
+																	setSelectedUserForModeration(item.userId);
+																	setShowModerationModal(true);
+																	setModerationReason("");
+																	setModeratorNotes("");
+																}}
+															>
+																Moderate
+															</Button>
 															{item.pendingReports > 0 && (
 																<Button
 																	size="sm"
 																	color="primary"
 																	variant="flat"
 																	onPress={() => {
-																		const pendingReport = userReportsForUser.find(
-																			(r) => r.status === "pending",
-																		);
+																		const pendingReport =
+																			userReportsForUser.find(
+																				(r) => r.status === "pending",
+																			);
 																		if (pendingReport) {
 																			setSelectedReportId(pendingReport._id);
 																			setModeratorNotes("");
@@ -323,7 +429,8 @@ export function ModerationPanel() {
 													<div className="flex items-start justify-between">
 														<div>
 															<p className="font-semibold">
-																Report for meme: {report.meme?.title || "Unknown"}
+																Report for meme:{" "}
+																{report.meme?.title || "Unknown"}
 															</p>
 															<p className="text-gray-500 text-sm">
 																Reason: {report.reason}
@@ -441,12 +548,98 @@ export function ModerationPanel() {
 					</div>
 
 					<ModalBody className="px-4 py-6">
+						{/* Moderation Status Summary */}
+						{selectedUserId && usersModerationStatus && (
+							<div className="mb-6">
+								{(() => {
+									const status = usersModerationStatus.find(
+										(s) => s.userId === selectedUserId,
+									)?.status;
+									if (!status) return null;
+
+									const hasAnyStatus =
+										status.warningCount > 0 ||
+										status.strikeCount > 0 ||
+										status.isMuted ||
+										status.isSuspended;
+
+									if (!hasAnyStatus) return null;
+
+									return (
+										<Card className="border border-orange-200 bg-orange-50 dark:border-orange-900/50 dark:bg-orange-950/30">
+											<CardBody className="p-4">
+												<div className="mb-2 flex items-center gap-2">
+													<Shield className="h-5 w-5 text-orange-600 dark:text-orange-500" />
+													<h4 className="font-bold text-gray-900 dark:text-gray-100">
+														Moderation Status
+													</h4>
+												</div>
+												<div className="flex flex-wrap gap-2">
+													{status.warningCount > 0 && (
+														<Chip
+															size="sm"
+															color="warning"
+															variant="flat"
+															startContent={
+																<AlertTriangle className="h-3 w-3" />
+															}
+														>
+															{status.warningCount} warning
+															{status.warningCount > 1 ? "s" : ""}
+														</Chip>
+													)}
+													{status.strikeCount > 0 && (
+														<Chip
+															size="sm"
+															color="danger"
+															variant="flat"
+															startContent={<Shield className="h-3 w-3" />}
+														>
+															{status.strikeCount}/2 strikes
+														</Chip>
+													)}
+													{status.isMuted && (
+														<Chip size="sm" color="danger" variant="solid">
+															MUTED
+														</Chip>
+													)}
+													{status.isSuspended && (
+														<Chip size="sm" color="danger" variant="solid">
+															SUSPENDED
+															{status.suspendedUntil &&
+																` until ${new Date(status.suspendedUntil).toLocaleDateString()}`}
+														</Chip>
+													)}
+												</div>
+												{(status.lastWarningAt || status.lastStrikeAt) && (
+													<p className="mt-2 text-gray-600 text-xs dark:text-gray-400">
+														Last action:{" "}
+														{new Date(
+															Math.max(
+																status.lastWarningAt || 0,
+																status.lastStrikeAt || 0,
+															),
+														).toLocaleDateString()}
+													</p>
+												)}
+											</CardBody>
+										</Card>
+									);
+								})()}
+							</div>
+						)}
+
 						{/* All Reports for this User */}
 						<div className="mb-6">
 							<h4 className="mb-3 font-bold text-gray-900 dark:text-gray-100">
-								Reports ({userReports?.filter((r) => r.reportedUserId === selectedUserId).length || 0})
+								Reports (
+								{userReports?.filter((r) => r.reportedUserId === selectedUserId)
+									.length || 0}
+								)
 							</h4>
-							{userReports && userReports.filter((r) => r.reportedUserId === selectedUserId).length > 0 ? (
+							{userReports &&
+							userReports.filter((r) => r.reportedUserId === selectedUserId)
+								.length > 0 ? (
 								<div className="space-y-3">
 									{userReports
 										.filter((r) => r.reportedUserId === selectedUserId)
@@ -473,7 +666,9 @@ export function ModerationPanel() {
 																		report.status.slice(1)}
 																</Chip>
 																<span className="text-gray-500 text-xs dark:text-gray-400">
-																	{new Date(report._creationTime).toLocaleDateString()}
+																	{new Date(
+																		report._creationTime,
+																	).toLocaleDateString()}
 																</span>
 															</div>
 															<p className="text-gray-900 text-sm dark:text-gray-100">
@@ -486,7 +681,10 @@ export function ModerationPanel() {
 																</p>
 															)}
 															<p className="mt-1 text-gray-500 text-xs dark:text-gray-500">
-																By {report.reporter?.name || report.reporter?.email || "Unknown"}
+																By{" "}
+																{report.reporter?.name ||
+																	report.reporter?.email ||
+																	"Unknown"}
 															</p>
 														</div>
 													</div>
@@ -495,7 +693,9 @@ export function ModerationPanel() {
 										))}
 								</div>
 							) : (
-								<p className="text-gray-500 text-sm dark:text-gray-400">No reports found</p>
+								<p className="text-gray-500 text-sm dark:text-gray-400">
+									No reports found
+								</p>
 							)}
 						</div>
 
@@ -683,6 +883,369 @@ export function ModerationPanel() {
 								radius="full"
 							>
 								Resolve
+							</Button>
+						</div>
+					</div>
+				</ModalContent>
+			</Modal>
+
+			{/* Moderation Action Modal */}
+			<Modal
+				isOpen={showModerationModal && selectedUserForModeration !== null}
+				onClose={() => {
+					setShowModerationModal(false);
+					setSelectedUserForModeration(null);
+					setModerationReason("");
+					setModeratorNotes("");
+				}}
+				placement="bottom"
+				motionProps={{
+					variants: {
+						enter: {
+							y: 0,
+							transition: {
+								duration: 0.3,
+								ease: "easeOut",
+							},
+						},
+						exit: {
+							y: "100%",
+							transition: {
+								duration: 0.2,
+								ease: "easeIn",
+							},
+						},
+					},
+				}}
+				classNames={{
+					wrapper: "items-end",
+					base: "max-w-[600px] mx-auto h-[80vh]! rounded-t-3xl mb-0 sm:mb-0",
+					backdrop: "backdrop-blur-sm bg-black/50",
+				}}
+				scrollBehavior="inside"
+			>
+				<ModalContent className="h-[80vh]! bg-gray-50 dark:bg-gray-950">
+					<div className="flex flex-col items-center border-gray-200 border-b pt-2 pb-3 dark:border-gray-800">
+						<div className="mb-3 h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-700" />
+						<div className="flex items-center gap-2">
+							<Shield className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+							<h3 className="font-bold text-base text-gray-900 dark:text-gray-100">
+								Moderation Actions
+							</h3>
+						</div>
+					</div>
+
+					<ModalBody className="px-4 py-6">
+						<div className="space-y-6">
+							{/* Current Status */}
+							{userModerationStatus && (
+								<Card className="border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+									<CardBody className="p-4">
+										<h4 className="mb-3 font-bold text-gray-900 dark:text-gray-100">
+											Current Status
+										</h4>
+										<div className="space-y-2 text-sm">
+											<div className="flex justify-between">
+												<span className="text-gray-600 dark:text-gray-400">
+													Warnings:
+												</span>
+												<span className="font-semibold text-gray-900 dark:text-gray-100">
+													{userModerationStatus.warningCount}
+												</span>
+											</div>
+											<div className="flex justify-between">
+												<span className="text-gray-600 dark:text-gray-400">
+													Strikes:
+												</span>
+												<span className="font-semibold text-gray-900 dark:text-gray-100">
+													{userModerationStatus.strikeCount} / 2
+												</span>
+											</div>
+											<div className="flex justify-between">
+												<span className="text-gray-600 dark:text-gray-400">
+													Muted:
+												</span>
+												<Chip
+													size="sm"
+													color={
+														userModerationStatus.isMuted ? "danger" : "success"
+													}
+												>
+													{userModerationStatus.isMuted ? "Yes" : "No"}
+												</Chip>
+											</div>
+											<div className="flex justify-between">
+												<span className="text-gray-600 dark:text-gray-400">
+													Suspended:
+												</span>
+												<Chip
+													size="sm"
+													color={
+														userModerationStatus.isSuspended
+															? "danger"
+															: "success"
+													}
+												>
+													{userModerationStatus.isSuspended ? "Yes" : "No"}
+												</Chip>
+											</div>
+											{userModerationStatus.suspendedUntil && (
+												<div className="flex justify-between">
+													<span className="text-gray-600 dark:text-gray-400">
+														Suspended Until:
+													</span>
+													<span className="font-semibold text-gray-900 dark:text-gray-100">
+														{new Date(
+															userModerationStatus.suspendedUntil,
+														).toLocaleDateString()}
+													</span>
+												</div>
+											)}
+										</div>
+
+										{/* Quick Actions */}
+										<div className="mt-4 flex gap-2">
+											{userModerationStatus.isMuted && (
+												<Button
+													size="sm"
+													color="success"
+													variant="flat"
+													onPress={async () => {
+														if (selectedUserForModeration) {
+															await unmuteUserMutation({
+																userId: selectedUserForModeration,
+															});
+														}
+													}}
+												>
+													Unmute
+												</Button>
+											)}
+											{userModerationStatus.isSuspended && (
+												<Button
+													size="sm"
+													color="success"
+													variant="flat"
+													onPress={async () => {
+														if (selectedUserForModeration) {
+															await unsuspendUserMutation({
+																userId: selectedUserForModeration,
+															});
+														}
+													}}
+												>
+													Unsuspend
+												</Button>
+											)}
+										</div>
+									</CardBody>
+								</Card>
+							)}
+
+							{/* Action Selection */}
+							<div className="space-y-4">
+								<Select
+									label="Moderation Action"
+									selectedKeys={[moderationAction]}
+									onSelectionChange={(keys) =>
+										setModerationAction(
+											Array.from(keys)[0] as
+												| "warning"
+												| "strike"
+												| "mute"
+												| "suspend",
+										)
+									}
+									classNames={{
+										trigger: "bg-white dark:bg-gray-900",
+									}}
+								>
+									<SelectItem key="warning">
+										Warning (Notification only)
+									</SelectItem>
+									<SelectItem key="strike">
+										Strike (2 strikes system)
+									</SelectItem>
+									<SelectItem key="mute">
+										Mute (Can't post or comment)
+									</SelectItem>
+									<SelectItem key="suspend">
+										Suspend (Full account suspension)
+									</SelectItem>
+								</Select>
+
+								{moderationAction === "suspend" && (
+									<Select
+										label="Suspension Duration"
+										selectedKeys={[suspensionDuration]}
+										onSelectionChange={(keys) =>
+											setSuspensionDuration(
+												Array.from(keys)[0] as
+													| "7_days"
+													| "30_days"
+													| "90_days"
+													| "indefinite",
+											)
+										}
+										classNames={{
+											trigger: "bg-white dark:bg-gray-900",
+										}}
+									>
+										<SelectItem key="7_days">7 Days</SelectItem>
+										<SelectItem key="30_days">30 Days</SelectItem>
+										<SelectItem key="90_days">90 Days</SelectItem>
+										<SelectItem key="indefinite">Indefinite</SelectItem>
+									</Select>
+								)}
+
+								<Textarea
+									label="Reason"
+									placeholder="Explain the reason for this action..."
+									value={moderationReason}
+									onValueChange={setModerationReason}
+									minRows={3}
+									isRequired
+									classNames={{
+										inputWrapper: "bg-white dark:bg-gray-900",
+									}}
+								/>
+
+								<Textarea
+									label="Additional Notes (Optional)"
+									placeholder="Add any additional context..."
+									value={moderatorNotes}
+									onValueChange={setModeratorNotes}
+									minRows={2}
+									classNames={{
+										inputWrapper: "bg-white dark:bg-gray-900",
+									}}
+								/>
+							</div>
+
+							{/* History */}
+							{userModerationHistory && userModerationHistory.length > 0 && (
+								<div>
+									<h4 className="mb-3 font-bold text-gray-900 dark:text-gray-100">
+										Moderation History
+									</h4>
+									<div className="space-y-2">
+										{userModerationHistory.slice(0, 5).map((action) => (
+											<Card
+												key={action._id}
+												className="border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
+											>
+												<CardBody className="p-3">
+													<div className="flex items-start justify-between">
+														<div className="flex-1">
+															<div className="mb-1 flex items-center gap-2">
+																<Chip
+																	size="sm"
+																	color={
+																		action.actionType === "warning"
+																			? "warning"
+																			: action.actionType === "strike"
+																				? "danger"
+																				: "default"
+																	}
+																>
+																	{action.actionType.toUpperCase()}
+																</Chip>
+																<span className="text-gray-500 text-xs dark:text-gray-400">
+																	{new Date(
+																		action._creationTime,
+																	).toLocaleDateString()}
+																</span>
+															</div>
+															<p className="text-gray-900 text-sm dark:text-gray-100">
+																{action.reason}
+															</p>
+															<p className="mt-1 text-gray-500 text-xs dark:text-gray-500">
+																By{" "}
+																{action.moderator?.name ||
+																	action.moderator?.email ||
+																	"Unknown"}
+															</p>
+														</div>
+													</div>
+												</CardBody>
+											</Card>
+										))}
+									</div>
+								</div>
+							)}
+						</div>
+					</ModalBody>
+
+					<div className="border-gray-200 border-t bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
+						<div className="flex gap-2">
+							<Button
+								variant="flat"
+								onPress={() => {
+									setShowModerationModal(false);
+									setSelectedUserForModeration(null);
+									setModerationReason("");
+									setModeratorNotes("");
+								}}
+								size="lg"
+								className="flex-1 bg-gray-100 dark:bg-gray-800"
+								radius="full"
+							>
+								Cancel
+							</Button>
+							<Button
+								color="danger"
+								onPress={async () => {
+									if (!selectedUserForModeration || !moderationReason.trim()) {
+										return;
+									}
+
+									try {
+										switch (moderationAction) {
+											case "warning":
+												await issueWarning({
+													userId: selectedUserForModeration,
+													reason: moderationReason,
+													notes: moderatorNotes || undefined,
+												});
+												break;
+											case "strike":
+												await issueStrike({
+													userId: selectedUserForModeration,
+													reason: moderationReason,
+													notes: moderatorNotes || undefined,
+												});
+												break;
+											case "mute":
+												await muteUserMutation({
+													userId: selectedUserForModeration,
+													reason: moderationReason,
+													notes: moderatorNotes || undefined,
+												});
+												break;
+											case "suspend":
+												await suspendUserMutation({
+													userId: selectedUserForModeration,
+													reason: moderationReason,
+													duration: suspensionDuration,
+													notes: moderatorNotes || undefined,
+												});
+												break;
+										}
+
+										setShowModerationModal(false);
+										setSelectedUserForModeration(null);
+										setModerationReason("");
+										setModeratorNotes("");
+									} catch (error) {
+										console.error("Failed to apply moderation action:", error);
+									}
+								}}
+								isDisabled={!moderationReason.trim()}
+								size="lg"
+								className="flex-1"
+								radius="full"
+							>
+								Apply Action
 							</Button>
 						</div>
 					</div>
