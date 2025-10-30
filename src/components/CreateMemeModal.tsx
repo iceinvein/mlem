@@ -1,10 +1,17 @@
 import { Button, Chip, Modal, ModalBody, ModalContent } from "@heroui/react";
 import { useMutation, useQuery } from "convex/react";
-import { AlertCircle, Camera, Check, Edit3, X } from "lucide-react";
+import { AlertCircle, Camera, Check, Edit3, Video, X } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import {
+	isFFmpegLoaded,
+	isFFmpegLoading,
+	optimizeVideo,
+	setDownloadProgressCallback,
+	validateVideo,
+} from "../utils/videoOptimizer";
 import { TagInput } from "./TagInput";
 
 interface CreateMemeModalProps {
@@ -20,10 +27,16 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 	const [imagePreview, setImagePreview] = useState<string | null>(null);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isOptimizing, setIsOptimizing] = useState(false);
+	const [optimizationProgress, setOptimizationProgress] = useState(0);
+	const [downloadProgress, setDownloadProgress] = useState(0);
+	const [optimizationStage, setOptimizationStage] = useState<
+		"idle" | "loading-wasm" | "processing" | "complete"
+	>("idle");
 	const [editingTitle, setEditingTitle] = useState(false);
 	const [editingCategory, setEditingCategory] = useState(false);
 	const [editingTags, setEditingTags] = useState(false);
 	const [validationError, setValidationError] = useState<string | null>(null);
+	const [contentType, setContentType] = useState<"image" | "video">("image");
 
 	const fileInputId = useId();
 	const categories = useQuery(api.memes.getCategories);
@@ -111,9 +124,100 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 		if (file) {
 			// Clear any previous validation errors
 			setValidationError(null);
+			setOptimizationProgress(0);
+
+			// Check if it's a video
+			if (file.type.startsWith("video/")) {
+				setContentType("video");
+
+				// Validate video
+				const validation = await validateVideo(file);
+				if (!validation.valid) {
+					setValidationError(validation.error || "Invalid video file");
+					return;
+				}
+
+				setIsOptimizing(true);
+				setOptimizationStage("idle");
+
+				// Create preview from original file first
+				const reader = new FileReader();
+				reader.onload = (e) => {
+					setImagePreview(e.target?.result as string);
+				};
+				reader.readAsDataURL(file);
+
+				try {
+					// Check if FFmpeg needs to be downloaded
+					if (!isFFmpegLoaded() && !isFFmpegLoading()) {
+						setOptimizationStage("loading-wasm");
+						setDownloadProgress(0);
+
+						// Set up download progress callback
+						setDownloadProgressCallback((progress) => {
+							setDownloadProgress(progress);
+						});
+
+						toast.info("Downloading video processor...", {
+							description: "~32MB download, may take 10-30 seconds",
+							duration: 5000,
+						});
+					} else if (isFFmpegLoading()) {
+						setOptimizationStage("loading-wasm");
+					}
+
+					const optimizedFile = await optimizeVideo(file, {
+						maxWidth: 1280,
+						maxHeight: 720,
+						targetBitrate: "1M",
+						maxFileSizeMB: 10,
+						onProgress: (progress) => {
+							setOptimizationStage("processing");
+							setOptimizationProgress(progress);
+						},
+					});
+
+					setOptimizationStage("complete");
+					setSelectedImage(optimizedFile);
+
+					// Update preview with optimized video
+					const optimizedReader = new FileReader();
+					optimizedReader.onload = (e) => {
+						setImagePreview(e.target?.result as string);
+					};
+					optimizedReader.readAsDataURL(optimizedFile);
+
+					const sizeMB = (optimizedFile.size / 1024 / 1024).toFixed(2);
+					const duration = validation.duration
+						? ` • ${Math.round(validation.duration)}s`
+						: "";
+					toast.success(`Video optimized: ${sizeMB}MB${duration}`, {
+						description: "Ready to upload",
+					});
+				} catch (error) {
+					console.error("Video optimization error:", error);
+					const errorMsg =
+						error instanceof Error ? error.message : "Unknown error";
+					setValidationError(
+						`Failed to optimize video: ${errorMsg}. Please try a different file.`,
+					);
+					setSelectedImage(null);
+					setImagePreview(null);
+					setOptimizationStage("idle");
+				} finally {
+					setIsOptimizing(false);
+					setOptimizationProgress(0);
+					setDownloadProgress(0);
+					setDownloadProgressCallback(null);
+				}
+				return;
+			}
+
+			// Handle images
+			setContentType("image");
 
 			if (!file.type.startsWith("image/")) {
-				setValidationError("Please select a valid image file");
+				setValidationError("Please select a valid image or video file");
 				return;
 			}
 
@@ -186,6 +290,7 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 				imageUrl: storageId,
 				categoryId: selectedCategory as Id<"categories">,
 				tags: tags,
+				contentType: contentType,
 			});
 
 			setTitle("");
@@ -193,6 +298,9 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 			setTags([]);
 			setSelectedImage(null);
 			setImagePreview(null);
+			setContentType("image");
+			setOptimizationProgress(0);
+			setOptimizationStage("idle");
 			onClose();
 		} catch (error) {
 			console.error("Error creating meme:", error);
@@ -368,15 +476,26 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 									)}
 								</div>
 
-								{/* Image */}
+								{/* Media */}
 								<div className="relative flex w-full items-center justify-center">
 									{imagePreview ? (
 										<>
-											<img
-												src={imagePreview}
-												alt="Preview"
-												className="max-h-[600px] object-contain"
-											/>
+											{contentType === "video" ? (
+												<video
+													src={imagePreview}
+													controls
+													className="max-h-[600px] w-full object-contain"
+													preload="metadata"
+													crossOrigin="anonymous"
+												/>
+											) : (
+												<img
+													src={imagePreview}
+													alt="Preview"
+													className="max-h-[600px] object-contain"
+													crossOrigin="anonymous"
+												/>
+											)}
 											<Button
 												isIconOnly
 												size="sm"
@@ -385,13 +504,85 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 												onPress={() => {
 													setSelectedImage(null);
 													setImagePreview(null);
+													setContentType("image");
 												}}
 											>
 												<X className="h-4 w-4" />
 											</Button>
 											{selectedImage && (
-												<div className="absolute bottom-3 left-3 rounded-full bg-gray-900/70 px-2 py-1 text-white text-xs">
+												<div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-gray-900/70 px-2 py-1 text-white text-xs">
+													{contentType === "video" && (
+														<Video className="h-3 w-3" />
+													)}
 													{(selectedImage.size / 1024 / 1024).toFixed(2)}MB
+												</div>
+											)}
+											{isOptimizing && (
+												<div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+													<div className="max-w-xs rounded-xl bg-white p-5 shadow-2xl dark:bg-gray-900">
+														{optimizationStage === "loading-wasm" && (
+															<>
+																<p className="mb-3 text-center font-semibold text-gray-900 text-sm dark:text-gray-100">
+																	Downloading Video Processor
+																</p>
+																{downloadProgress > 0 ? (
+																	<>
+																		<div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+																			<div
+																				className="h-full bg-blue-600 transition-all duration-300 dark:bg-blue-400"
+																				style={{
+																					width: `${downloadProgress}%`,
+																				}}
+																			/>
+																		</div>
+																		<p className="text-center font-mono text-gray-600 text-xs dark:text-gray-400">
+																			{downloadProgress}%
+																		</p>
+																		<p className="mt-2 text-center text-gray-500 text-xs dark:text-gray-400">
+																			~32MB • First time only
+																		</p>
+																	</>
+																) : (
+																	<>
+																		<div className="mb-3 flex items-center justify-center">
+																			<div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600 dark:border-gray-700 dark:border-t-blue-400" />
+																		</div>
+																		<p className="text-center text-gray-500 text-xs dark:text-gray-400">
+																			Starting download...
+																		</p>
+																	</>
+																)}
+															</>
+														)}
+														{optimizationStage === "processing" && (
+															<>
+																<p className="mb-3 text-center font-semibold text-gray-900 text-sm dark:text-gray-100">
+																	Optimizing Video
+																</p>
+																<div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+																	<div
+																		className="h-full bg-blue-600 transition-all duration-300 dark:bg-blue-400"
+																		style={{
+																			width: `${optimizationProgress}%`,
+																		}}
+																	/>
+																</div>
+																<p className="text-center font-mono text-gray-600 text-xs dark:text-gray-400">
+																	{optimizationProgress}%
+																</p>
+															</>
+														)}
+														{optimizationStage === "idle" && (
+															<>
+																<div className="mb-3 flex items-center justify-center">
+																	<div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600 dark:border-gray-700 dark:border-t-blue-400" />
+																</div>
+																<p className="text-center font-semibold text-gray-900 text-sm dark:text-gray-100">
+																	Preparing...
+																</p>
+															</>
+														)}
+													</div>
 												</div>
 											)}
 										</>
@@ -403,17 +594,28 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 											<input
 												id={fileInputId}
 												type="file"
-												accept="image/*,image/gif"
+												accept="image/*,image/gif,video/mp4,video/quicktime,video/webm"
 												onChange={handleImageSelect}
 												className="hidden"
 												disabled={isOptimizing}
 											/>
-											<Camera className="mb-3 h-16 w-16 text-gray-400" />
+											<div className="mb-3 flex gap-4">
+												<Camera className="h-16 w-16 text-gray-400" />
+												<Video className="h-16 w-16 text-gray-400" />
+											</div>
 											<span className="font-medium text-base text-gray-600 dark:text-gray-400">
-												{isOptimizing ? "Optimizing..." : "Upload image or GIF"}
+												{isOptimizing
+													? optimizationStage === "loading-wasm"
+														? "Downloading processor..."
+														: optimizationStage === "processing"
+															? `Optimizing... ${optimizationProgress}%`
+															: "Preparing..."
+													: "Upload image, GIF, or video"}
 											</span>
-											<span className="mt-1 text-gray-500 text-xs">
+											<span className="mt-1 text-center text-gray-500 text-xs">
 												Images: Min 400x400px • GIFs: Min 300x300px, Max 5MB
+												<br />
+												Videos: Auto-optimized to ~10MB
 											</span>
 										</label>
 									)}
@@ -556,9 +758,13 @@ export function CreateMemeModal({ isOpen, onClose }: CreateMemeModalProps) {
 								{rateLimitStatus?.isLimited
 									? "Rate Limit Reached"
 									: isUploading
-										? "Creating..."
+										? "Uploading..."
 										: isOptimizing
-											? "Optimizing..."
+											? optimizationStage === "loading-wasm"
+												? "Downloading..."
+												: optimizationStage === "processing"
+													? `Optimizing ${optimizationProgress}%`
+													: "Processing..."
 											: "Create"}
 							</Button>
 							<Button

@@ -67,6 +67,23 @@ export const getFeed = query({
 			);
 		}
 
+		// Batch fetch all storage URLs first (more efficient)
+		const storageIds = memes
+			.filter((m) => m.imageUrl && !m.imageUrl.startsWith("http"))
+			.map((m) => m.imageUrl as Id<"_storage">);
+
+		const storageUrls = await Promise.all(
+			storageIds.map((id) => ctx.storage.getUrl(id)),
+		);
+
+		const storageUrlMap = new Map<string, string>();
+		storageIds.forEach((id, index) => {
+			const url = storageUrls[index];
+			if (url) {
+				storageUrlMap.set(id, url);
+			}
+		});
+
 		// Fetch interactions, categories, and author info in parallel
 		const results = await Promise.all(
 			memes.map(async (meme) => {
@@ -89,11 +106,7 @@ export const getFeed = query({
 
 				let imageUrl = meme.imageUrl;
 				if (meme.imageUrl && !meme.imageUrl.startsWith("http")) {
-					const storageId: Id<"_storage"> = meme.imageUrl as Id<"_storage">;
-					const storageUrl = await ctx.storage.getUrl(storageId);
-					if (storageUrl) {
-						imageUrl = storageUrl;
-					}
+					imageUrl = storageUrlMap.get(meme.imageUrl) || meme.imageUrl;
 				}
 
 				return {
@@ -116,6 +129,7 @@ export const getFeed = query({
 								email: author.email,
 							}
 						: null,
+					contentType: meme.contentType || "image",
 				};
 			}),
 		);
@@ -272,6 +286,7 @@ export const createMeme = mutation({
 		imageUrl: v.string(),
 		categoryId: v.id("categories"),
 		tags: v.array(v.string()),
+		contentType: v.optional(v.union(v.literal("image"), v.literal("video"))),
 	},
 	returns: v.id("memes"),
 	handler: async (ctx, args) => {
@@ -352,6 +367,7 @@ export const createMeme = mutation({
 			shares: 0,
 			comments: 0,
 			tags: args.tags,
+			contentType: args.contentType || "image",
 		});
 
 		return memeId;
@@ -672,6 +688,7 @@ export const getSingleMeme = query({
 						email: author.email,
 					}
 				: null,
+			contentType: meme.contentType || "image",
 		};
 	},
 });

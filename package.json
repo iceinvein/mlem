@@ -15,6 +15,8 @@
   "dependencies": {
     "@auth/core": "^0.37.0",
     "@convex-dev/auth": "^0.0.90",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@heroui/avatar": "^2.2.22",
     "@heroui/button": "^2.2.27",
     "@heroui/card": "^2.2.25",

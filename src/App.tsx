@@ -14,6 +14,7 @@ import { ModerationWarningModal } from "./components/ModerationWarningModal";
 import { Settings } from "./components/Settings";
 import { SinglePost } from "./components/SinglePost";
 import { SuspensionCheck } from "./components/SuspensionCheck";
+import { preloadFFmpeg } from "./utils/videoOptimizer";
 
 export default function App() {
 	const [showNav, setShowNav] = useState(false);
@@ -24,6 +25,12 @@ export default function App() {
 			setShowNav(true);
 		}, 100);
 		return () => clearTimeout(timer);
+	}, []);
+
+	useEffect(() => {
+		// Preload FFmpeg WASM in the background for faster video uploads
+		// This is optional and won't block the app if it fails
+		preloadFFmpeg();
 	}, []);
 
 	return (

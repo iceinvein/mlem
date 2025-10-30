@@ -16,6 +16,7 @@ const applicationTables = {
 		shares: v.number(),
 		comments: v.optional(v.number()),
 		tags: v.array(v.string()),
+		contentType: v.optional(v.union(v.literal("image"), v.literal("video"))),
 	})
 		.index("by_category", ["categoryId"])
 		.index("by_likes", ["likes"]),

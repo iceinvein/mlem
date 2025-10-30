@@ -163,6 +163,7 @@ export const getUserMemes = query({
 				}),
 				v.null(),
 			),
+			contentType: v.union(v.literal("image"), v.literal("video")),
 		}),
 	),
 	handler: async (ctx, args) => {
@@ -200,6 +201,7 @@ export const getUserMemes = query({
 								name: category.name,
 							}
 						: null,
+					contentType: meme.contentType || "image",
 				};
 			}),
 		);

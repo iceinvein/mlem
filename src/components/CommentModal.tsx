@@ -63,8 +63,7 @@ export function CommentModal({ memeId, isOpen, onClose }: CommentModalProps) {
 		// Check if user is muted or suspended
 		if (moderationStatus?.isSuspended || moderationStatus?.isMuted) {
 			toast.error("Cannot Reply", {
-				description:
-					moderationStatus.reason || "You cannot reply at this time",
+				description: moderationStatus.reason || "You cannot reply at this time",
 			});
 			return;
 		}

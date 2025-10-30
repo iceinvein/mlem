@@ -79,3 +79,24 @@ export const resetDatabase = internalMutation({
 		return null;
 	},
 });
+
+export const addContentTypeToMemes = internalMutation({
+	args: {},
+	returns: v.null(),
+	handler: async (ctx) => {
+		const memes = await ctx.db.query("memes").collect();
+
+		let updated = 0;
+		for (const meme of memes) {
+			if (!meme.contentType) {
+				await ctx.db.patch(meme._id, {
+					contentType: "image",
+				});
+				updated++;
+			}
+		}
+
+		console.log(`Updated ${updated} memes with contentType field`);
+		return null;
+	},
+});

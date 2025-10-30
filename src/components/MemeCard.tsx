@@ -38,6 +38,7 @@ interface MemeCardProps {
 			name?: string;
 			email?: string;
 		} | null;
+		contentType?: "image" | "video";
 	};
 	hideCommentModal?: boolean;
 }
@@ -161,20 +162,34 @@ function MemeCardComponent({ meme, hideCommentModal = false }: MemeCardProps) {
 
 				{imageUrl && !imageError ? (
 					<div className="flex w-full items-center justify-center">
-						<Image
-							src={imageUrl}
-							alt={meme.title}
-							classNames={{
-								wrapper: "!max-w-full",
-								img: "max-h-[600px] object-contain",
-							}}
-							onError={() => setImageError(true)}
-						/>
+						{meme.contentType === "video" ? (
+							<video
+								src={imageUrl}
+								controls
+								className="max-h-[600px] w-full object-contain"
+								preload="metadata"
+								crossOrigin="anonymous"
+								onError={() => setImageError(true)}
+							/>
+						) : (
+							<Image
+								src={imageUrl}
+								alt={meme.title}
+								classNames={{
+									wrapper: "!max-w-full",
+									img: "max-h-[600px] object-contain",
+								}}
+								crossOrigin="anonymous"
+								onError={() => setImageError(true)}
+							/>
+						)}
 					</div>
 				) : (
 					<div className="flex h-[300px] flex-col items-center justify-center bg-gray-100 text-gray-400 dark:bg-gray-900">
 						<ImageOff className="mb-3 h-16 w-16" strokeWidth={1.5} />
-						<p className="font-medium text-sm">Image not available</p>
+						<p className="font-medium text-sm">
+							{meme.contentType === "video" ? "Video" : "Image"} not available
+						</p>
 					</div>
 				)}
 

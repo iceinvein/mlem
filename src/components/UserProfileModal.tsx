@@ -203,21 +203,32 @@ export function UserProfileModal({
 										imageUrl: string;
 										likes: number;
 										comments: number;
+										contentType?: "image" | "video";
 									}) => (
 										<div
 											key={meme._id}
 											className="relative aspect-square overflow-hidden rounded-lg bg-gray-200 dark:bg-gray-800"
 										>
 											{meme.imageUrl && !imageErrors.has(meme._id) ? (
-												<Image
-													src={meme.imageUrl}
-													alt={meme.title}
-													classNames={{
-														wrapper: "!max-w-full h-full",
-														img: "h-full w-full object-cover",
-													}}
-													onError={() => handleImageError(meme._id)}
-												/>
+												meme.contentType === "video" ? (
+													<video
+														src={meme.imageUrl}
+														className="h-full w-full object-cover"
+														crossOrigin="anonymous"
+														onError={() => handleImageError(meme._id)}
+													/>
+												) : (
+													<Image
+														src={meme.imageUrl}
+														alt={meme.title}
+														classNames={{
+															wrapper: "!max-w-full h-full",
+															img: "h-full w-full object-cover",
+														}}
+														crossOrigin="anonymous"
+														onError={() => handleImageError(meme._id)}
+													/>
+												)
 											) : (
 												<div className="flex h-full w-full items-center justify-center">
 													<ImageOff
